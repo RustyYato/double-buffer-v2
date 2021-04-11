@@ -2,6 +2,7 @@ use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use crate::traits::Strategy;
 
+#[derive(Default)]
 pub struct Atomic {
     readers: AtomicUsize,
 }

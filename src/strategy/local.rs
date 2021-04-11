@@ -2,7 +2,8 @@ use core::cell::Cell;
 
 use crate::traits::Strategy;
 
-pub struct Local {
+#[derive(Default)]
+pub struct LocalStrategy {
     readers: Cell<usize>,
 }
 
@@ -14,7 +15,7 @@ pub struct Capture(());
 #[derive(Debug)]
 pub struct CaptureError(());
 
-unsafe impl Strategy for Local {
+unsafe impl Strategy for LocalStrategy {
     type Which = Cell<bool>;
     type ReaderTag = ReaderTag;
     type WriterTag = WriterTag;
