@@ -1,0 +1,22 @@
+[package]
+name = "double-buffer"
+version = "0.1.0"
+authors = ["RustyYato <krishna.sd.2012@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+
+default = ['std']
+
+std = ['parking_lot', 'alloc']
+alloc = []
+
+[dependencies]
+radium = '0.6'
+spin = '0.9'
+smallvec = { version = '1', default-features = false }
+crossbeam-utils = { version = '0.8', default-features = false }
+
+parking_lot = { version = '0.11', optional = true }

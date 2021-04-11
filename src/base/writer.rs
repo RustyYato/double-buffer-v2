@@ -1,0 +1,152 @@
+use radium::Radium;
+
+use core::sync::atomic::Ordering;
+
+use crate::traits::{RawDoubleBuffer, Strategy, StrongBuffer, TrustedRadium};
+
+use super::Reader;
+
+pub type Buffer<I> = <<I as StrongBuffer>::Raw as RawDoubleBuffer>::Buffer;
+pub type Capture<I> = <<I as StrongBuffer>::Strategy as Strategy>::Capture;
+pub type CaptureError<I> = <<I as StrongBuffer>::Strategy as Strategy>::CaptureError;
+
+pub struct Writer<I, T = <<I as StrongBuffer>::Strategy as Strategy>::WriterTag> {
+    tag: T,
+    inner: I,
+}
+
+pub struct Swap<C>(C);
+
+pub struct Split<'a, B: ?Sized> {
+    pub writer: &'a B,
+    pub reader: &'a B,
+}
+
+pub struct SplitMut<'a, B: ?Sized> {
+    pub writer: &'a mut B,
+    pub reader: &'a B,
+}
+
+struct FinishSwapOnDrop<'a, S: Strategy> {
+    strategy: &'a S,
+    swap: S::Capture,
+}
+
+impl<S: Strategy> Drop for FinishSwapOnDrop<'_, S> {
+    fn drop(&mut self) {
+        while !self.strategy.readers_have_exited(&mut self.swap) {
+            self.strategy.pause(&mut self.swap)
+        }
+    }
+}
+
+impl<I, T> Writer<I, T> {
+    pub(crate) unsafe fn from_raw_parts(inner: I, tag: T) -> Self { Self { tag, inner } }
+}
+
+impl<I: StrongBuffer> Writer<I> {
+    pub fn reader(&self) -> Reader<I::Weak> { Reader::new(&self.inner) }
+
+    pub fn strategy(&self) -> &I::Strategy { &self.inner.strategy }
+
+    pub fn get(&self) -> &Buffer<I> { self.split().writer }
+
+    pub fn get_mut(&mut self) -> &mut Buffer<I> { self.split_mut().writer }
+
+    pub fn split(&self) -> Split<'_, Buffer<I>> {
+        let inner = &*self.inner;
+
+        // `Reader` only read from `which`, and reads can't race
+        // `Writer` only writes to `which` under a `&mut _`,
+        // so that can't race with any reads or writes within `Writer`
+        let which = unsafe { inner.which.load_unsync() };
+        let (writer, reader) = unsafe { inner.raw.split(which) };
+
+        Split { writer, reader }
+    }
+
+    pub fn split_mut(&mut self) -> SplitMut<'_, Buffer<I>> {
+        let inner = &*self.inner;
+
+        // `Reader` only read from `which`, and reads can't race
+        // `Writer` only writes to `which` under a `&mut _`,
+        // so that can't race with any reads or writes within `Writer`
+        let which = unsafe { inner.which.load_unsync() };
+        let (writer, reader) = unsafe { inner.raw.split_mut(which) };
+
+        SplitMut { writer, reader }
+    }
+
+    pub fn try_swap_buffers(&mut self) -> Result<(), CaptureError<I>> {
+        let swap = unsafe { self.try_start_buffer_swap()? };
+        self.finish_buffer_swap(swap);
+        Ok(())
+    }
+
+    pub fn swap_buffers(&mut self) {
+        let swap = unsafe { self.start_buffer_swap() };
+        self.finish_buffer_swap(swap);
+    }
+
+    pub fn try_swap_buffers_with<F: FnMut(&Self)>(&mut self, mut f: F) -> Result<(), CaptureError<I>> {
+        let swap = unsafe { self.try_start_buffer_swap()? };
+        let this = &*self;
+        let f = move || f(this);
+        this.finish_buffer_swap_with(swap, f);
+        Ok(())
+    }
+
+    pub fn swap_buffers_with<F: FnMut(&Self)>(&mut self, mut f: F) {
+        let swap = unsafe { self.start_buffer_swap() };
+        let this = &*self;
+        let f = move || f(this);
+        this.finish_buffer_swap_with(swap, f);
+    }
+
+    pub unsafe fn try_start_buffer_swap(&mut self) -> Result<Swap<Capture<I>>, CaptureError<I>> {
+        let inner = &*self.inner;
+        let capture = inner.strategy.try_capture_readers(&mut self.tag)?;
+
+        // `which` only needs to syncronize with the readers, which only
+        // load `which` (`Ordering::Acquire`), so a `Release` ordering
+        // is sufficient. The `Writer` cannot race with itself.
+        inner.which.fetch_xor(true, Ordering::Release);
+
+        let capture = inner.strategy.finish_capture_readers(&mut self.tag, capture);
+        Ok(Swap(capture))
+    }
+
+    pub unsafe fn start_buffer_swap(&mut self) -> Swap<Capture<I>> {
+        self.try_start_buffer_swap().expect("Could not swap buffers")
+    }
+
+    pub fn is_swap_complete(&self, swap: &mut Swap<Capture<I>>) -> bool {
+        self.inner.strategy.readers_have_exited(&mut swap.0)
+    }
+
+    pub fn finish_buffer_swap(&self, swap: Swap<Capture<I>>) {
+        fn do_nothing() {}
+        self.finish_buffer_swap_with(swap, do_nothing)
+    }
+
+    #[allow(clippy::toplevel_ref_arg)]
+    pub fn finish_buffer_swap_with<F: FnMut()>(&self, swap: Swap<Capture<I>>, ref mut f: F) {
+        #[cold]
+        #[inline(never)]
+        fn cold(f: &mut dyn FnMut()) { f() }
+
+        fn finish_swap_with<S: Strategy>(strategy: &S, swap: S::Capture, f: &mut dyn FnMut()) {
+            let mut on_drop = FinishSwapOnDrop { strategy, swap };
+            let swap = &mut on_drop.swap;
+
+            while !strategy.readers_have_exited(swap) {
+                cold(f);
+                strategy.pause(swap);
+            }
+
+            core::mem::forget(on_drop)
+        }
+
+        finish_swap_with(&self.inner.strategy, swap.0, f)
+    }
+}
