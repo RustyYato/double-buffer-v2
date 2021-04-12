@@ -59,6 +59,7 @@ unsafe impl Strategy for SyncStrategy {
     fn finish_capture_readers(&self, _: &mut Self::WriterTag, FastCapture(()): Self::FastCapture) -> Self::Capture {
         let mut active = SmallVec::new();
 
+        // get rid of any dead readers and keep track of any active readers
         self.tag_list.lock().retain(|tag| {
             let is_alive = Thin::strong_count(tag) != 0;
 
@@ -93,11 +94,18 @@ unsafe impl Strategy for SyncStrategy {
 
     #[inline]
     fn begin_guard(&self, tag: &mut Self::ReaderTag) -> Self::RawGuard {
-        let old = tag.0.fetch_add(1, Ordering::AcqRel);
-        debug_assert_eq!(old & 1, 0);
-        RawGuard { tag: tag.0.clone() }
+        #[cold]
+        #[inline(never)]
+        fn begin_guard_fail() -> ! {
+            panic!("Previous reader guard was leaked");
+        }
+        if tag.0.fetch_add(1, Ordering::Acquire) & 1 == 0 {
+            RawGuard { tag: tag.0.clone() }
+        } else {
+            begin_guard_fail()
+        }
     }
 
     #[inline]
-    unsafe fn end_guard(&self, guard: Self::RawGuard) { guard.tag.fetch_add(1, Ordering::Acquire); }
+    unsafe fn end_guard(&self, guard: Self::RawGuard) { guard.tag.fetch_add(1, Ordering::Release); }
 }

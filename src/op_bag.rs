@@ -22,11 +22,10 @@ impl<O> OpBag<O> {
     where
         O: Operation<B>,
     {
-        for operation in self.operations.drain(..self.applied) {
+        let applied = core::mem::take(&mut self.applied);
+        for operation in self.operations.drain(..applied) {
             operation.apply_final(buffer);
         }
-
-        self.applied = 0;
 
         for operation in self.operations.iter_mut() {
             self.applied += 1;
@@ -37,6 +36,12 @@ impl<O> OpBag<O> {
     pub fn push(&mut self, op: O) { self.operations.push(op); }
 
     pub fn reserve(&mut self, additional: usize) { self.operations.reserve(additional) }
+}
+
+impl<O> Extend<O> for OpBag<O> {
+    fn extend<T: IntoIterator<Item = O>>(&mut self, iter: T) {
+        self.operations.extend(iter)
+    }
 }
 
 impl<O> Deref for OpBag<O> {

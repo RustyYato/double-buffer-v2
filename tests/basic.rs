@@ -33,18 +33,18 @@ fn basic_op_writer() {
     assert_eq!(*r.get(), 0);
     w.push(Op(-2));
     assert_eq!(*r.get(), 0);
-    w.swap_buffers().unwrap();
+    w.swap_buffers();
     assert_eq!(*r.get(), -2);
     w.push(Op(2));
     assert_eq!(*r.get(), -2);
-    w.swap_buffers().unwrap();
+    w.swap_buffers();
     assert_eq!(*r.get(), 0);
     w.push(Op(2));
     assert_eq!(*r.get(), 0);
-    w.swap_buffers().unwrap();
+    w.swap_buffers();
     assert_eq!(*r.get(), 2);
-    w.swap_buffers().unwrap();
+    w.swap_buffers();
     assert_eq!(*r.get(), 2);
-    w.swap_buffers().unwrap();
+    w.swap_buffers();
     assert_eq!(*r.get(), 2);
 }
