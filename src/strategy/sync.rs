@@ -60,7 +60,7 @@ unsafe impl Strategy for SyncStrategy {
         let mut active = SmallVec::new();
 
         self.tag_list.lock().retain(|tag| {
-            let is_alive = Thin::strong_count(tag) != 1;
+            let is_alive = Thin::strong_count(tag) != 0;
 
             if is_alive && tag.load(Ordering::Acquire) & 1 == 1 {
                 active.push(tag.clone())
@@ -93,7 +93,8 @@ unsafe impl Strategy for SyncStrategy {
 
     #[inline]
     fn begin_guard(&self, tag: &mut Self::ReaderTag) -> Self::RawGuard {
-        tag.0.fetch_add(1, Ordering::Acquire);
+        let old = tag.0.fetch_add(1, Ordering::AcqRel);
+        debug_assert_eq!(old & 1, 0);
         RawGuard { tag: tag.0.clone() }
     }
 

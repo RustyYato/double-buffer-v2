@@ -17,3 +17,34 @@ fn swap_with_active_readers() {
     let _rg = r.get();
     w.swap_buffers();
 }
+
+#[test]
+#[cfg(feature = "alloc")]
+fn basic_op_writer() {
+    struct Op(i32);
+
+    impl double_buffer::traits::Operation<i32> for Op {
+        fn apply(&mut self, buffer: &mut i32) { *buffer += self.0 }
+    }
+
+    let mut inner = double_buffer::base::Inner::new(double_buffer::strategy::sync::SyncStrategy::default(), 0, 0);
+    let (w, mut r) = double_buffer::base::new(&mut inner);
+    let mut w = double_buffer::op::OpWriter::from(w);
+    assert_eq!(*r.get(), 0);
+    w.push(Op(-2));
+    assert_eq!(*r.get(), 0);
+    w.swap_buffers().unwrap();
+    assert_eq!(*r.get(), -2);
+    w.push(Op(2));
+    assert_eq!(*r.get(), -2);
+    w.swap_buffers().unwrap();
+    assert_eq!(*r.get(), 0);
+    w.push(Op(2));
+    assert_eq!(*r.get(), 0);
+    w.swap_buffers().unwrap();
+    assert_eq!(*r.get(), 2);
+    w.swap_buffers().unwrap();
+    assert_eq!(*r.get(), 2);
+    w.swap_buffers().unwrap();
+    assert_eq!(*r.get(), 2);
+}

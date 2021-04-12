@@ -1,6 +1,7 @@
 use radium::Radium;
 
 use core::{mem::ManuallyDrop, ops::Deref, sync::atomic::Ordering};
+use std::marker::PhantomData;
 
 use crate::traits::{RawDoubleBuffer, Strategy, StrongBuffer, WeakBuffer};
 
@@ -11,15 +12,16 @@ pub struct Reader<I, T = <<I as WeakBuffer>::Strategy as Strategy>::ReaderTag> {
 
 pub struct ReaderGuard<'reader, I: StrongBuffer, T: ?Sized = <<I as StrongBuffer>::Raw as RawDoubleBuffer>::Buffer> {
     value: &'reader T,
-    raw: RawGuard<I>,
+    raw: RawGuard<'reader, I>,
 }
 
-pub struct RawGuard<I: StrongBuffer> {
+pub struct RawGuard<'reader, I: StrongBuffer> {
+    reader: PhantomData<&'reader ()>,
     raw: ManuallyDrop<<<I as StrongBuffer>::Strategy as Strategy>::RawGuard>,
     keep_alive: I,
 }
 
-impl<I: StrongBuffer> Drop for RawGuard<I> {
+impl<I: StrongBuffer> Drop for RawGuard<'_, I> {
     fn drop(&mut self) { unsafe { self.keep_alive.strategy.end_guard(ManuallyDrop::take(&mut self.raw)) } }
 }
 
@@ -63,6 +65,7 @@ impl<I: WeakBuffer> Reader<I> {
         Ok(ReaderGuard {
             value: unsafe { &*buffer },
             raw: RawGuard {
+                reader: PhantomData,
                 raw: ManuallyDrop::new(guard),
                 keep_alive,
             },

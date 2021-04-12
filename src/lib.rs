@@ -5,9 +5,13 @@
 extern crate alloc as std;
 
 pub mod base;
+#[cfg(feature = "alloc")]
+pub mod op;
 pub mod strategy;
 pub mod traits;
 
+#[cfg(feature = "alloc")]
+pub mod op_bag;
 #[cfg(feature = "alloc")]
 pub mod thin;
 

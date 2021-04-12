@@ -84,3 +84,8 @@ where
 unsafe impl TrustedRadium for AtomicBool {
     unsafe fn load_unsync(&self) -> Self::Item { core::ptr::read(self as *const Self as *const bool) }
 }
+
+pub trait Operation<B: ?Sized>: Sized {
+    fn apply(&mut self, buffer: &mut B);
+    fn apply_final(mut self, buffer: &mut B) { self.apply(buffer) }
+}
