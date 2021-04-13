@@ -8,3 +8,6 @@ pub mod sync;
 pub mod park {
     pub use super::sync::park::*;
 }
+
+#[cfg(feature = "std")]
+mod lock;
