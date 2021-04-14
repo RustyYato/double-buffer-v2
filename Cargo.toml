@@ -10,7 +10,7 @@ edition = "2018"
 
 default = ['std']
 
-std = ['parking_lot', 'alloc']
+std = ['parking_lot', 'parking_lot_core', 'alloc']
 alloc = []
 
 [dependencies]
@@ -20,3 +20,4 @@ smallvec = { version = '1', default-features = false }
 crossbeam-utils = { version = '0.8', default-features = false }
 
 parking_lot = { version = '0.11', optional = true }
+parking_lot_core = { version = '0.8.3', optional = true }

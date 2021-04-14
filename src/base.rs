@@ -7,7 +7,7 @@ mod writer;
 use raw_buffers::RawBuffers;
 
 use radium::Radium;
-pub use reader::Reader;
+pub use reader::{Reader, ReaderGuard};
 pub use writer::{Buffer, Capture, CaptureError, Split, SplitMut, Swap, Writer};
 
 pub struct Inner<S, R: ?Sized, W = <S as Strategy>::Which> {

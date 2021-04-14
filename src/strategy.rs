@@ -10,4 +10,4 @@ pub mod park {
 }
 
 #[cfg(feature = "std")]
-mod lock;
+pub mod lock;

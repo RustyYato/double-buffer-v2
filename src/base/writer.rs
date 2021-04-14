@@ -29,12 +29,12 @@ pub struct SplitMut<'a, B: ?Sized> {
 
 struct FinishSwapOnDrop<'a, S: Strategy> {
     strategy: &'a S,
-    swap: S::Capture,
+    swap: &'a mut S::Capture,
 }
 
 impl<S: Strategy> Drop for FinishSwapOnDrop<'_, S> {
     fn drop(&mut self) {
-        while !self.strategy.readers_have_exited(&mut self.swap) {
+        while !self.strategy.readers_have_exited(self.swap) {
             self.strategy.pause(&mut self.swap)
         }
     }
@@ -125,8 +125,22 @@ impl<I: StrongBuffer> Writer<I> {
     }
 
     pub fn finish_buffer_swap(&self, swap: Swap<Capture<I>>) {
-        fn do_nothing() {}
-        self.finish_buffer_swap_with(swap, do_nothing)
+        fn finish_swap<S: Strategy>(strategy: &S, tag: &S::WriterTag, mut swap: S::Capture) {
+            let on_drop = FinishSwapOnDrop {
+                strategy,
+                swap: &mut swap,
+            };
+
+            while !strategy.readers_have_exited(on_drop.swap) {
+                strategy.pause(on_drop.swap);
+            }
+
+            core::mem::forget(on_drop);
+
+            strategy.finish_capture(tag, swap);
+        }
+
+        finish_swap(&self.inner.strategy, &self.tag, swap.0)
     }
 
     #[allow(clippy::toplevel_ref_arg)]
@@ -135,18 +149,22 @@ impl<I: StrongBuffer> Writer<I> {
         #[inline(never)]
         fn cold(f: &mut dyn FnMut()) { f() }
 
-        fn finish_swap_with<S: Strategy>(strategy: &S, swap: S::Capture, f: &mut dyn FnMut()) {
-            let mut on_drop = FinishSwapOnDrop { strategy, swap };
-            let swap = &mut on_drop.swap;
+        fn finish_swap_with<S: Strategy>(strategy: &S, tag: &S::WriterTag, mut swap: S::Capture, f: &mut dyn FnMut()) {
+            let on_drop = FinishSwapOnDrop {
+                strategy,
+                swap: &mut swap,
+            };
 
-            while !strategy.readers_have_exited(swap) {
+            while !strategy.readers_have_exited(on_drop.swap) {
                 cold(f);
-                strategy.pause(swap);
+                strategy.pause(on_drop.swap);
             }
 
-            core::mem::forget(on_drop)
+            core::mem::forget(on_drop);
+
+            strategy.finish_capture(tag, swap);
         }
 
-        finish_swap_with(&self.inner.strategy, swap.0, f)
+        finish_swap_with(&self.inner.strategy, &self.tag, swap.0, f)
     }
 }

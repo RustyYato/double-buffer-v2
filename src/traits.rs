@@ -55,6 +55,8 @@ pub unsafe trait Strategy {
 
     fn readers_have_exited(&self, capture: &mut Self::Capture) -> bool;
 
+    fn finish_capture(&self, _: &Self::WriterTag, _capture: Self::Capture) {}
+
     #[inline]
     fn pause(&self, _: &mut Self::Capture) {}
 
