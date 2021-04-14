@@ -2,12 +2,12 @@ pub mod atomic;
 pub mod local;
 
 #[cfg(feature = "alloc")]
-pub mod sync;
+pub mod saving;
 
 #[cfg(feature = "std")]
-pub mod park {
-    pub use super::sync::park::*;
+pub mod saving_park {
+    pub use super::saving::park::*;
 }
 
 #[cfg(feature = "std")]
-pub mod lock;
+pub mod sync;

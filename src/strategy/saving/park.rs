@@ -1,5 +1,5 @@
 use crate::{
-    strategy::sync::{Capture as RawCapture, FastCapture as RawFastCapture},
+    strategy::saving::{Capture as RawCapture, FastCapture as RawFastCapture},
     traits::Strategy,
 };
 use core::sync::atomic::AtomicBool;
