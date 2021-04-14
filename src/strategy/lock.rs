@@ -65,8 +65,6 @@ unsafe impl Strategy for LockStrategy {
         }
     }
 
-    #[cold]
-    #[inline(never)]
     fn pause(&self, _: &mut Self::Capture) {
         self.lock.fetch_or(PENDING_SWAP, Ordering::Release);
 

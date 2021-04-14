@@ -125,29 +125,18 @@ impl<I: StrongBuffer> Writer<I> {
     }
 
     pub fn finish_buffer_swap(&self, swap: Swap<Capture<I>>) {
-        fn finish_swap<S: Strategy>(strategy: &S, tag: &S::WriterTag, mut swap: S::Capture) {
-            let on_drop = FinishSwapOnDrop {
-                strategy,
-                swap: &mut swap,
-            };
-
-            while !strategy.readers_have_exited(on_drop.swap) {
-                strategy.pause(on_drop.swap);
-            }
-
-            core::mem::forget(on_drop);
-
-            strategy.finish_capture(tag, swap);
-        }
-
-        finish_swap(&self.inner.strategy, &self.tag, swap.0)
+        fn drop_in_place() {}
+        self.finish_buffer_swap_with(swap, drop_in_place)
     }
 
     #[allow(clippy::toplevel_ref_arg)]
     pub fn finish_buffer_swap_with<F: FnMut()>(&self, swap: Swap<Capture<I>>, ref mut f: F) {
         #[cold]
         #[inline(never)]
-        fn cold(f: &mut dyn FnMut()) { f() }
+        fn cold<S: Strategy>(f: &mut dyn FnMut(), strategy: &S, capture: &mut S::Capture) {
+            f();
+            strategy.pause(capture);
+        }
 
         fn finish_swap_with<S: Strategy>(strategy: &S, tag: &S::WriterTag, mut swap: S::Capture, f: &mut dyn FnMut()) {
             let on_drop = FinishSwapOnDrop {
@@ -156,8 +145,7 @@ impl<I: StrongBuffer> Writer<I> {
             };
 
             while !strategy.readers_have_exited(on_drop.swap) {
-                cold(f);
-                strategy.pause(on_drop.swap);
+                cold(f, strategy, on_drop.swap);
             }
 
             core::mem::forget(on_drop);
