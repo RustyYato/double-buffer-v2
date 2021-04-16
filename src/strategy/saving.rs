@@ -1,4 +1,4 @@
-use crate::{smallvec::SmallVec, thin::Thin, traits::Strategy};
+use crate::{thin::Thin, traits::Strategy};
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use parking_lot_core::SpinWait;
 
@@ -11,8 +11,8 @@ use spin::Mutex;
 pub(crate) mod park;
 
 #[derive(Default)]
-pub struct SavingStrategy<const THREAD_COUNT: usize> {
-    tag_list: Mutex<SmallVec<Thin<AtomicUsize>, THREAD_COUNT>>,
+pub struct SavingStrategy {
+    tag_list: Mutex<Vec<Thin<AtomicUsize>>>,
 }
 
 pub struct RawGuard {
@@ -29,7 +29,7 @@ pub struct Capture {
 pub struct ReaderTag(Thin<AtomicUsize>);
 pub struct WriterTag(());
 
-unsafe impl<const THREAD_COUNT: usize> Strategy for SavingStrategy<THREAD_COUNT> {
+unsafe impl Strategy for SavingStrategy {
     type Which = AtomicBool;
     type ReaderTag = ReaderTag;
     type WriterTag = WriterTag;

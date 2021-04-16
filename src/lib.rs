@@ -19,7 +19,6 @@ mod imp;
 #[cfg(feature = "alloc")]
 mod imp_alloc;
 mod raw;
-mod smallvec;
 
 #[cfg(feature = "alloc")]
 pub use imp_alloc::UpgradeError;

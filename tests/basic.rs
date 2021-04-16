@@ -28,7 +28,7 @@ fn basic_op_writer() {
     }
 
     let mut inner =
-        double_buffer::base::Inner::new(double_buffer::strategy::saving::SavingStrategy::<4>::default(), 0, 0);
+        double_buffer::base::Inner::new(double_buffer::strategy::saving::SavingStrategy::default(), 0, 0);
     let (w, mut r) = double_buffer::base::new(&mut inner);
     let mut w = double_buffer::op::OpWriter::from(w);
     assert_eq!(*r.get(), 0);
