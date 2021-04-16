@@ -3,17 +3,17 @@ use crate::{
     traits::{RawDoubleBuffer, RawParts, Strategy, StrongBuffer, WeakBuffer},
 };
 
-unsafe impl<'a, S: Strategy, R: RawDoubleBuffer> RawParts for &'a mut Inner<S, R> {
+unsafe impl<'a, S: Strategy, R: RawDoubleBuffer> RawParts for &'a mut Inner<R, S> {
     type Strategy = S;
     type Raw = R;
 
-    type Strong = &'a Inner<S, R>;
-    type Weak = &'a Inner<S, R>;
+    type Strong = &'a Inner<R, S>;
+    type Weak = &'a Inner<R, S>;
 
     fn raw_parts(self) -> (Self::Strong, Self::Weak) { (self, self) }
 }
 
-unsafe impl<S: Strategy, R: RawDoubleBuffer> StrongBuffer for &Inner<S, R> {
+unsafe impl<S: Strategy, R: RawDoubleBuffer> StrongBuffer for &Inner<R, S> {
     type Strategy = S;
     type Raw = R;
     type Weak = Self;
@@ -21,7 +21,7 @@ unsafe impl<S: Strategy, R: RawDoubleBuffer> StrongBuffer for &Inner<S, R> {
     fn downgrade(&self) -> Self::Weak { self }
 }
 
-unsafe impl<S: Strategy, R: RawDoubleBuffer> WeakBuffer for &Inner<S, R> {
+unsafe impl<S: Strategy, R: RawDoubleBuffer> WeakBuffer for &Inner<R, S> {
     type Strategy = S;
     type Raw = R;
     type Strong = Self;

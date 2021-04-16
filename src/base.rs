@@ -10,7 +10,7 @@ use radium::Radium;
 pub use reader::{Reader, ReaderGuard};
 pub use writer::{Buffer, Capture, CaptureError, Split, SplitMut, Swap, Writer};
 
-pub struct Inner<S, R: ?Sized, W = <S as Strategy>::Which> {
+pub struct Inner<R: ?Sized, S, W = <S as Strategy>::Which> {
     which: W,
     pub strategy: S,
     raw: RawBuffers<R>,
@@ -29,11 +29,11 @@ pub fn new<I: RawParts>(inner: I) -> (Writer<I::Strong>, Reader<I::Weak>) {
     }
 }
 
-impl<S: Strategy, B> Inner<S, [B; 2]> {
+impl<S: Strategy, B> Inner<[B; 2], S> {
     pub fn new(strategy: S, front: B, back: B) -> Self { Self::from_raw_parts(strategy, [front, back]) }
 }
 
-impl<S: Strategy, R: RawDoubleBuffer> Inner<S, R> {
+impl<S: Strategy, R: RawDoubleBuffer> Inner<R, S> {
     pub fn from_raw_parts(strategy: S, buffers: R) -> Self {
         Self {
             strategy,

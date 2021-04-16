@@ -1,5 +1,5 @@
 use crate::{
-    base::{Buffer, Capture, Split, Swap, Writer},
+    base::{Buffer, Capture, Reader, Split, Swap, Writer},
     traits::{Operation, Strategy, StrongBuffer},
 };
 
@@ -19,7 +19,7 @@ impl WaitingStrategy for crate::strategy::saving::SavingStrategy {}
 #[cfg(feature = "std")]
 impl WaitingStrategy for crate::strategy::saving_park::SavingParkStrategy {}
 
-impl<I: StrongBuffer, O: Operation<Buffer<I>>> From<Writer<I>> for OpWriter<I, O>
+impl<I: StrongBuffer, O> From<Writer<I>> for OpWriter<I, O>
 where
     I::Strategy: WaitingStrategy,
 {
@@ -34,6 +34,8 @@ where
 }
 
 impl<I: StrongBuffer, O> OpWriter<I, O> {
+    pub fn reader(&self) -> Reader<I::Weak> { self.writer.reader() }
+
     pub fn get(&self) -> &Buffer<I> { self.writer.get() }
 
     pub fn split(&self) -> Split<'_, Buffer<I>> { self.writer.split() }

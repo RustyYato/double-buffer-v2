@@ -4,6 +4,21 @@ use core::{marker::PhantomData, mem::ManuallyDrop, ops::Deref, sync::atomic::Ord
 
 use crate::traits::{RawDoubleBuffer, Strategy, StrongBuffer, WeakBuffer};
 
+impl<I> Default for Reader<I>
+where
+    I: WeakBuffer + Default,
+    I::Strategy: Default,
+{
+    fn default() -> Self {
+        let strategy = <I::Strategy>::default();
+        let tag = unsafe { strategy.reader_tag() };
+        Self {
+            tag,
+            inner: I::default(),
+        }
+    }
+}
+
 pub struct Reader<I, T = <<I as WeakBuffer>::Strategy as Strategy>::ReaderTag> {
     tag: T,
     inner: I,

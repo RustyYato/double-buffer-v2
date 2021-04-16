@@ -13,7 +13,7 @@ pub unsafe trait RawParts {
     fn raw_parts(self) -> (Self::Strong, Self::Weak);
 }
 
-pub unsafe trait StrongBuffer: Clone + Deref<Target = Inner<Self::Strategy, Self::Raw>> {
+pub unsafe trait StrongBuffer: Clone + Deref<Target = Inner<Self::Raw, Self::Strategy>> {
     type Strategy: Strategy;
     type Raw: RawDoubleBuffer;
 
