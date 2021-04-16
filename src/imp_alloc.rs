@@ -2,7 +2,7 @@ use crate::{
     thin,
     traits::{RawParts, StrongBuffer, WeakBuffer},
 };
-use std::{rc, sync};
+use std::{boxed::Box, rc, sync};
 
 use crate::{
     base::Inner,

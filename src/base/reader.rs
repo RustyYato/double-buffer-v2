@@ -1,7 +1,6 @@
 use radium::Radium;
 
-use core::{mem::ManuallyDrop, ops::Deref, sync::atomic::Ordering};
-use std::marker::PhantomData;
+use core::{marker::PhantomData, mem::ManuallyDrop, ops::Deref, sync::atomic::Ordering};
 
 use crate::traits::{RawDoubleBuffer, Strategy, StrongBuffer, WeakBuffer};
 
