@@ -12,7 +12,7 @@ pub struct SavingParkStrategy<const THREAD_COUNT: usize> {
 }
 
 pub struct FastCapture(RawFastCapture);
-pub struct Capture<const THREAD_COUNT: usize>(RawCapture<THREAD_COUNT>);
+pub struct Capture(RawCapture);
 
 pub struct ReaderTag(super::ReaderTag);
 pub struct WriterTag(super::WriterTag);
@@ -35,7 +35,7 @@ unsafe impl<const THREAD_COUNT: usize> Strategy for SavingParkStrategy<THREAD_CO
 
     type FastCapture = FastCapture;
     type CaptureError = core::convert::Infallible;
-    type Capture = Capture<THREAD_COUNT>;
+    type Capture = Capture;
 
     #[inline]
     unsafe fn reader_tag(&self) -> Self::ReaderTag { ReaderTag(self.raw.reader_tag()) }

@@ -54,12 +54,12 @@ impl<T, const N: usize> SmallVec<T, N> {
         }
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub fn len(&self) -> usize {
         unsafe {
             if self.heap.cap > N {
-                self.heap.len == 0
+                self.heap.len
             } else {
-                self.array.len == 0
+                self.array.len
             }
         }
     }

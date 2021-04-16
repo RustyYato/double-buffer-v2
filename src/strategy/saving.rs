@@ -15,16 +15,14 @@ pub struct SavingStrategy<const THREAD_COUNT: usize> {
     tag_list: Mutex<SmallVec<Thin<AtomicUsize>, THREAD_COUNT>>,
 }
 
-// const _: [(); std::mem::size_of::<SavingStrategy<4>>()] = [];
-
 pub struct RawGuard {
     tag: Thin<AtomicUsize>,
 }
 
 pub struct FastCapture(());
 
-pub struct Capture<const THREAD_COUNT: usize> {
-    active: SmallVec<Thin<AtomicUsize>, THREAD_COUNT>,
+pub struct Capture {
+    active: Vec<Thin<AtomicUsize>>,
     backoff: SpinWait,
 }
 
@@ -39,7 +37,7 @@ unsafe impl<const THREAD_COUNT: usize> Strategy for SavingStrategy<THREAD_COUNT>
 
     type FastCapture = FastCapture;
     type CaptureError = core::convert::Infallible;
-    type Capture = Capture<THREAD_COUNT>;
+    type Capture = Capture;
 
     #[inline]
     unsafe fn reader_tag(&self) -> Self::ReaderTag {
@@ -58,10 +56,12 @@ unsafe impl<const THREAD_COUNT: usize> Strategy for SavingStrategy<THREAD_COUNT>
     }
 
     fn finish_capture_readers(&self, _: &mut Self::WriterTag, FastCapture(()): Self::FastCapture) -> Self::Capture {
-        let mut active = SmallVec::new();
+        let mut list = self.tag_list.lock();
+
+        let mut active = Vec::with_capacity(list.len().min(8));
 
         // get rid of any dead readers and keep track of any active readers
-        self.tag_list.lock().retain(|tag| {
+        list.retain(|tag| {
             let is_alive = Thin::strong_count(tag) != 0;
 
             if is_alive && tag.load(Ordering::Acquire) & 1 == 1 {
