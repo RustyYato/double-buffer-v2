@@ -15,9 +15,9 @@ pub struct OpWriter<I, O, T = <<I as StrongBuffer>::Strategy as Strategy>::Write
 pub struct PoisonError(());
 
 pub trait WaitingStrategy {}
-impl WaitingStrategy for crate::strategy::saving::SavingStrategy {}
+impl<const THREAD_COUNT: usize> WaitingStrategy for crate::strategy::saving::SavingStrategy<THREAD_COUNT> {}
 #[cfg(feature = "std")]
-impl WaitingStrategy for crate::strategy::saving_park::SavingParkStrategy {}
+impl<const THREAD_COUNT: usize> WaitingStrategy for crate::strategy::saving_park::SavingParkStrategy<THREAD_COUNT> {}
 
 impl<I: StrongBuffer, O> From<Writer<I>> for OpWriter<I, O>
 where

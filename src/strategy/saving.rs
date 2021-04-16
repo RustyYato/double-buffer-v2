@@ -1,7 +1,6 @@
-use crate::{thin::Thin, traits::Strategy};
+use crate::{smallvec::SmallVec, thin::Thin, traits::Strategy};
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use parking_lot_core::SpinWait;
-use smallvec::SmallVec;
 
 #[cfg(feature = "std")]
 use parking_lot::Mutex;
@@ -12,9 +11,11 @@ use spin::Mutex;
 pub(crate) mod park;
 
 #[derive(Default)]
-pub struct SavingStrategy {
-    tag_list: Mutex<SmallVec<[Thin<AtomicUsize>; 8]>>,
+pub struct SavingStrategy<const THREAD_COUNT: usize> {
+    tag_list: Mutex<SmallVec<Thin<AtomicUsize>, THREAD_COUNT>>,
 }
+
+// const _: [(); std::mem::size_of::<SavingStrategy<4>>()] = [];
 
 pub struct RawGuard {
     tag: Thin<AtomicUsize>,
@@ -22,15 +23,15 @@ pub struct RawGuard {
 
 pub struct FastCapture(());
 
-pub struct Capture {
-    active: SmallVec<[Thin<AtomicUsize>; 8]>,
+pub struct Capture<const THREAD_COUNT: usize> {
+    active: SmallVec<Thin<AtomicUsize>, THREAD_COUNT>,
     backoff: SpinWait,
 }
 
 pub struct ReaderTag(Thin<AtomicUsize>);
 pub struct WriterTag(());
 
-unsafe impl Strategy for SavingStrategy {
+unsafe impl<const THREAD_COUNT: usize> Strategy for SavingStrategy<THREAD_COUNT> {
     type Which = AtomicBool;
     type ReaderTag = ReaderTag;
     type WriterTag = WriterTag;
@@ -38,7 +39,7 @@ unsafe impl Strategy for SavingStrategy {
 
     type FastCapture = FastCapture;
     type CaptureError = core::convert::Infallible;
-    type Capture = Capture;
+    type Capture = Capture<THREAD_COUNT>;
 
     #[inline]
     unsafe fn reader_tag(&self) -> Self::ReaderTag {

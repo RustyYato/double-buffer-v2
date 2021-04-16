@@ -6,19 +6,19 @@ use core::sync::atomic::AtomicBool;
 use parking_lot::Condvar;
 
 #[derive(Default)]
-pub struct SavingParkStrategy {
-    raw: super::SavingStrategy,
+pub struct SavingParkStrategy<const THREAD_COUNT: usize> {
+    raw: super::SavingStrategy<THREAD_COUNT>,
     cv: Condvar,
 }
 
 pub struct FastCapture(RawFastCapture);
-pub struct Capture(RawCapture);
+pub struct Capture<const THREAD_COUNT: usize>(RawCapture<THREAD_COUNT>);
 
 pub struct ReaderTag(super::ReaderTag);
 pub struct WriterTag(super::WriterTag);
 pub struct RawGuard(super::RawGuard);
 
-impl SavingParkStrategy {
+impl<const THREAD_COUNT: usize> SavingParkStrategy<THREAD_COUNT> {
     #[cold]
     #[inline(never)]
     fn park(&self) {
@@ -27,7 +27,7 @@ impl SavingParkStrategy {
     }
 }
 
-unsafe impl Strategy for SavingParkStrategy {
+unsafe impl<const THREAD_COUNT: usize> Strategy for SavingParkStrategy<THREAD_COUNT> {
     type Which = AtomicBool;
     type ReaderTag = ReaderTag;
     type WriterTag = WriterTag;
@@ -35,7 +35,7 @@ unsafe impl Strategy for SavingParkStrategy {
 
     type FastCapture = FastCapture;
     type CaptureError = core::convert::Infallible;
-    type Capture = Capture;
+    type Capture = Capture<THREAD_COUNT>;
 
     #[inline]
     unsafe fn reader_tag(&self) -> Self::ReaderTag { ReaderTag(self.raw.reader_tag()) }
