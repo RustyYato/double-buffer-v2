@@ -18,7 +18,7 @@ impl<O> OpBag<O> {
 
     pub fn applied(&self) -> usize { self.applied }
 
-    pub(crate) fn apply<B: ?Sized>(&mut self, buffer: &mut B)
+    pub fn apply<B: ?Sized>(&mut self, buffer: &mut B)
     where
         O: Operation<B>,
     {
