@@ -1,6 +1,6 @@
 use crate::{thin::Thin, traits::Strategy};
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use crossbeam_utils::Backoff;
+use parking_lot_core::SpinWait;
 use smallvec::SmallVec;
 
 #[cfg(feature = "std")]
@@ -24,7 +24,7 @@ pub struct FastCapture(());
 
 pub struct Capture {
     active: SmallVec<[Thin<AtomicUsize>; 8]>,
-    backoff: Backoff,
+    backoff: SpinWait,
 }
 
 pub struct ReaderTag(Thin<AtomicUsize>);
@@ -72,7 +72,7 @@ unsafe impl Strategy for SavingStrategy {
 
         Capture {
             active,
-            backoff: Backoff::new(),
+            backoff: SpinWait::new(),
         }
     }
 
@@ -90,7 +90,11 @@ unsafe impl Strategy for SavingStrategy {
     }
 
     #[cold]
-    fn pause(&self, capture: &mut Self::Capture) { capture.backoff.snooze(); }
+    fn pause(&self, capture: &mut Self::Capture) {
+        if !capture.backoff.spin() {
+            capture.backoff.reset()
+        }
+    }
 
     #[inline]
     fn begin_guard(&self, tag: &mut Self::ReaderTag) -> Self::RawGuard {

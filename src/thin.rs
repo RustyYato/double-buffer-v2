@@ -12,6 +12,9 @@ pub struct Thin<T: ?Sized> {
     drop: PhantomData<T>,
 }
 
+unsafe impl<T: Send + Sync + ?Sized> Send for Thin<T> {}
+unsafe impl<T: Send + Sync + ?Sized> Sync for Thin<T> {}
+
 #[repr(C)]
 pub struct ThinInner<T: ?Sized> {
     count: AtomicUsize,

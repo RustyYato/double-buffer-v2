@@ -67,10 +67,8 @@ unsafe impl Strategy for SavingParkStrategy {
 
     #[cold]
     fn pause(&self, Capture(capture): &mut Self::Capture) {
-        if capture.backoff.is_completed() {
+        if !capture.backoff.spin() {
             self.park();
-        } else {
-            capture.backoff.snooze();
         }
     }
 
