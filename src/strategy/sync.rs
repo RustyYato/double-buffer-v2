@@ -8,24 +8,24 @@ const READ_TOKEN: ParkToken = ParkToken(1);
 const SWAP_HANDOFF: UnparkToken = UnparkToken(0);
 const UNPARK_ALL: UnparkToken = UnparkToken(1);
 
-pub struct LockStrategy {
-    lock: AtomicUsize,
-}
-
 const ONE_READER: usize = 0b100;
 const PENDING_SWAP: usize = 0b01;
 const PENDING_READERS: usize = 0b10;
 
+pub struct SyncStrategy {
+    lock: AtomicUsize,
+}
+
 fn timeout() -> std::time::Instant { std::time::Instant::now() + std::time::Duration::from_micros(100) }
 
 #[allow(clippy::declare_interior_mutable_const)]
-impl LockStrategy {
+impl SyncStrategy {
     pub const INIT: Self = Self {
         lock: AtomicUsize::new(0),
     };
 }
 
-impl Default for LockStrategy {
+impl Default for SyncStrategy {
     fn default() -> Self { Self::INIT }
 }
 
@@ -35,7 +35,7 @@ pub struct RawGuard(());
 
 pub struct Capture(());
 
-unsafe impl Strategy for LockStrategy {
+unsafe impl Strategy for SyncStrategy {
     type Which = AtomicBool;
     type ReaderTag = ReaderTag;
     type WriterTag = WriterTag;
@@ -108,7 +108,7 @@ unsafe impl Strategy for LockStrategy {
     }
 }
 
-impl LockStrategy {
+impl SyncStrategy {
     #[cold]
     #[inline(never)]
     fn finish_capture_slow(&self) {

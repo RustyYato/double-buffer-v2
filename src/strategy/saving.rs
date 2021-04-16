@@ -12,7 +12,7 @@ use spin::Mutex;
 pub(crate) mod park;
 
 #[derive(Default)]
-pub struct SyncStrategy {
+pub struct SavingStrategy {
     tag_list: Mutex<SmallVec<[Thin<AtomicUsize>; 8]>>,
 }
 
@@ -30,7 +30,7 @@ pub struct Capture {
 pub struct ReaderTag(Thin<AtomicUsize>);
 pub struct WriterTag(());
 
-unsafe impl Strategy for SyncStrategy {
+unsafe impl Strategy for SavingStrategy {
     type Which = AtomicBool;
     type ReaderTag = ReaderTag;
     type WriterTag = WriterTag;

@@ -6,8 +6,8 @@ use core::sync::atomic::AtomicBool;
 use parking_lot::Condvar;
 
 #[derive(Default)]
-pub struct ParkStrategy {
-    raw: super::SyncStrategy,
+pub struct SavingParkStrategy {
+    raw: super::SavingStrategy,
     cv: Condvar,
 }
 
@@ -18,7 +18,7 @@ pub struct ReaderTag(super::ReaderTag);
 pub struct WriterTag(super::WriterTag);
 pub struct RawGuard(super::RawGuard);
 
-impl ParkStrategy {
+impl SavingParkStrategy {
     #[cold]
     #[inline(never)]
     fn park(&self) {
@@ -27,7 +27,7 @@ impl ParkStrategy {
     }
 }
 
-unsafe impl Strategy for ParkStrategy {
+unsafe impl Strategy for SavingParkStrategy {
     type Which = AtomicBool;
     type ReaderTag = ReaderTag;
     type WriterTag = WriterTag;

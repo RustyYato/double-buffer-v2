@@ -27,7 +27,7 @@ fn basic_op_writer() {
         fn apply(&mut self, buffer: &mut i32) { *buffer += self.0 }
     }
 
-    let mut inner = double_buffer::base::Inner::new(double_buffer::strategy::saving::SyncStrategy::default(), 0, 0);
+    let mut inner = double_buffer::base::Inner::new(double_buffer::strategy::saving::SavingStrategy::default(), 0, 0);
     let (w, mut r) = double_buffer::base::new(&mut inner);
     let mut w = double_buffer::op::OpWriter::from(w);
     assert_eq!(*r.get(), 0);
@@ -51,7 +51,7 @@ fn basic_op_writer() {
 
 #[test]
 fn infinite() {
-    let mut inner = double_buffer::base::Inner::new(double_buffer::strategy::sync::LockStrategy::INIT, (), ());
+    let mut inner = double_buffer::base::Inner::new(double_buffer::strategy::sync::SyncStrategy::INIT, (), ());
     let (mut w, mut r) = double_buffer::base::new(&mut inner);
     w.swap_buffers();
     let _rg = r.get();
