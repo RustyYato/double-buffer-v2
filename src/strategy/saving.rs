@@ -22,7 +22,7 @@ pub struct RawGuard {
 pub struct FastCapture(());
 
 pub struct Capture {
-    active: Vec<Thin<AtomicUsize>>,
+    active: Vec<(usize, Thin<AtomicUsize>)>,
     backoff: SpinWait,
 }
 
@@ -64,8 +64,10 @@ unsafe impl Strategy for SavingStrategy {
         list.retain(|tag| {
             let is_alive = Thin::strong_count(tag) != 0;
 
-            if is_alive && tag.load(Ordering::Acquire) & 1 == 1 {
-                active.push(tag.clone())
+            let value = tag.load(Ordering::Acquire);
+
+            if is_alive && value & 1 == 1 {
+                active.push((value, tag.clone()))
             }
 
             is_alive
@@ -79,7 +81,9 @@ unsafe impl Strategy for SavingStrategy {
 
     #[inline]
     fn readers_have_exited(&self, capture: &mut Self::Capture) -> bool {
-        capture.active.retain(|tag| tag.load(Ordering::Relaxed) & 1 == 1);
+        capture
+            .active
+            .retain(|(old_value, tag)| *old_value != tag.load(Ordering::Relaxed));
 
         let readers_have_exited = capture.active.is_empty();
 

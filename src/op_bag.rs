@@ -39,9 +39,7 @@ impl<O> OpBag<O> {
 }
 
 impl<O> Extend<O> for OpBag<O> {
-    fn extend<T: IntoIterator<Item = O>>(&mut self, iter: T) {
-        self.operations.extend(iter)
-    }
+    fn extend<T: IntoIterator<Item = O>>(&mut self, iter: T) { self.operations.extend(iter) }
 }
 
 impl<O> Deref for OpBag<O> {
