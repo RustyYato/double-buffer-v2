@@ -5,7 +5,7 @@ use radium::Radium;
 
 pub unsafe trait RawParts {
     type Strategy: Strategy;
-    type Raw: RawDoubleBuffer;
+    type Raw: RawDoubleBuffer + ?Sized;
 
     type Strong: StrongBuffer<Weak = Self::Weak, Strategy = Self::Strategy, Raw = Self::Raw>;
     type Weak: WeakBuffer<Strong = Self::Strong, Strategy = Self::Strategy, Raw = Self::Raw>;
@@ -15,7 +15,7 @@ pub unsafe trait RawParts {
 
 pub unsafe trait StrongBuffer: Clone + Deref<Target = Inner<Self::Raw, Self::Strategy>> {
     type Strategy: Strategy;
-    type Raw: RawDoubleBuffer;
+    type Raw: RawDoubleBuffer + ?Sized;
 
     type Weak: WeakBuffer<Strong = Self, Strategy = Self::Strategy, Raw = Self::Raw>;
 
@@ -24,7 +24,7 @@ pub unsafe trait StrongBuffer: Clone + Deref<Target = Inner<Self::Raw, Self::Str
 
 pub unsafe trait WeakBuffer: Clone {
     type Strategy: Strategy;
-    type Raw: RawDoubleBuffer;
+    type Raw: RawDoubleBuffer + ?Sized;
 
     type Strong: StrongBuffer<Weak = Self, Strategy = Self::Strategy, Raw = Self::Raw>;
 

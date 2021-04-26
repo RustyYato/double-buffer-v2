@@ -81,7 +81,7 @@ impl<T: ?Sized> Drop for Thin<T> {
     }
 }
 
-impl<T> Deref for Thin<T> {
+impl<T: ?Sized> Deref for Thin<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target { unsafe { &self.inner.as_ref().value } }

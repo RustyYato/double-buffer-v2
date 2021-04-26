@@ -12,7 +12,7 @@ use crate::{
 #[derive(Debug)]
 pub struct UpgradeError;
 
-unsafe impl<'a, S: Strategy, R: RawDoubleBuffer> RawParts for sync::Arc<Inner<R, S>> {
+unsafe impl<'a, S: Strategy, R: RawDoubleBuffer + ?Sized> RawParts for sync::Arc<Inner<R, S>> {
     type Strategy = S;
     type Raw = R;
 
@@ -26,7 +26,7 @@ unsafe impl<'a, S: Strategy, R: RawDoubleBuffer> RawParts for sync::Arc<Inner<R,
     }
 }
 
-unsafe impl<S: Strategy, R: RawDoubleBuffer> StrongBuffer for sync::Arc<Inner<R, S>> {
+unsafe impl<S: Strategy, R: RawDoubleBuffer + ?Sized> StrongBuffer for sync::Arc<Inner<R, S>> {
     type Strategy = S;
     type Raw = R;
     type Weak = sync::Weak<Inner<R, S>>;
@@ -34,7 +34,7 @@ unsafe impl<S: Strategy, R: RawDoubleBuffer> StrongBuffer for sync::Arc<Inner<R,
     fn downgrade(&self) -> Self::Weak { sync::Arc::downgrade(self) }
 }
 
-unsafe impl<S: Strategy, R: RawDoubleBuffer> WeakBuffer for sync::Weak<Inner<R, S>> {
+unsafe impl<S: Strategy, R: RawDoubleBuffer + ?Sized> WeakBuffer for sync::Weak<Inner<R, S>> {
     type Strategy = S;
     type Raw = R;
     type Strong = sync::Arc<Inner<R, S>>;
@@ -45,7 +45,7 @@ unsafe impl<S: Strategy, R: RawDoubleBuffer> WeakBuffer for sync::Weak<Inner<R, 
     fn upgrade(&self) -> Result<Self::Strong, Self::UpgradeError> { self.upgrade().ok_or(UpgradeError) }
 }
 
-unsafe impl<'a, S: Strategy, R: RawDoubleBuffer> RawParts for rc::Rc<Inner<R, S>> {
+unsafe impl<'a, S: Strategy, R: RawDoubleBuffer + ?Sized> RawParts for rc::Rc<Inner<R, S>> {
     type Strategy = S;
     type Raw = R;
 
@@ -59,7 +59,7 @@ unsafe impl<'a, S: Strategy, R: RawDoubleBuffer> RawParts for rc::Rc<Inner<R, S>
     }
 }
 
-unsafe impl<S: Strategy, R: RawDoubleBuffer> StrongBuffer for rc::Rc<Inner<R, S>> {
+unsafe impl<S: Strategy, R: RawDoubleBuffer + ?Sized> StrongBuffer for rc::Rc<Inner<R, S>> {
     type Strategy = S;
     type Raw = R;
     type Weak = rc::Weak<Inner<R, S>>;
@@ -67,7 +67,7 @@ unsafe impl<S: Strategy, R: RawDoubleBuffer> StrongBuffer for rc::Rc<Inner<R, S>
     fn downgrade(&self) -> Self::Weak { rc::Rc::downgrade(self) }
 }
 
-unsafe impl<S: Strategy, R: RawDoubleBuffer> WeakBuffer for rc::Weak<Inner<R, S>> {
+unsafe impl<S: Strategy, R: RawDoubleBuffer + ?Sized> WeakBuffer for rc::Weak<Inner<R, S>> {
     type Strategy = S;
     type Raw = R;
     type Strong = rc::Rc<Inner<R, S>>;
@@ -78,7 +78,7 @@ unsafe impl<S: Strategy, R: RawDoubleBuffer> WeakBuffer for rc::Weak<Inner<R, S>
     fn upgrade(&self) -> Result<Self::Strong, Self::UpgradeError> { self.upgrade().ok_or(UpgradeError) }
 }
 
-unsafe impl<S: Strategy, R: RawDoubleBuffer> RawParts for Box<thin::ThinInner<Inner<R, S>>> {
+unsafe impl<S: Strategy, R: RawDoubleBuffer + ?Sized> RawParts for Box<thin::ThinInner<Inner<R, S>>> {
     type Strategy = S;
     type Raw = R;
 
@@ -91,7 +91,7 @@ unsafe impl<S: Strategy, R: RawDoubleBuffer> RawParts for Box<thin::ThinInner<In
     }
 }
 
-unsafe impl<S: Strategy, R: RawDoubleBuffer> StrongBuffer for thin::Thin<Inner<R, S>> {
+unsafe impl<S: Strategy, R: RawDoubleBuffer + ?Sized> StrongBuffer for thin::Thin<Inner<R, S>> {
     type Strategy = S;
     type Raw = R;
     type Weak = Self;
@@ -99,7 +99,7 @@ unsafe impl<S: Strategy, R: RawDoubleBuffer> StrongBuffer for thin::Thin<Inner<R
     fn downgrade(&self) -> Self::Weak { self.clone() }
 }
 
-unsafe impl<S: Strategy, R: RawDoubleBuffer> WeakBuffer for thin::Thin<Inner<R, S>> {
+unsafe impl<S: Strategy, R: RawDoubleBuffer + ?Sized> WeakBuffer for thin::Thin<Inner<R, S>> {
     type Strategy = S;
     type Raw = R;
     type Strong = Self;
