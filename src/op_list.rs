@@ -3,12 +3,12 @@ use std::vec::Vec;
 
 use crate::traits::Operation;
 
-pub struct OpBag<O> {
+pub struct OpList<O> {
     operations: Vec<O>,
     applied: usize,
 }
 
-impl<O> OpBag<O> {
+impl<O> OpList<O> {
     pub const fn new() -> Self {
         Self {
             operations: Vec::new(),
@@ -38,11 +38,11 @@ impl<O> OpBag<O> {
     pub fn reserve(&mut self, additional: usize) { self.operations.reserve(additional) }
 }
 
-impl<O> Extend<O> for OpBag<O> {
+impl<O> Extend<O> for OpList<O> {
     fn extend<T: IntoIterator<Item = O>>(&mut self, iter: T) { self.operations.extend(iter) }
 }
 
-impl<O> Deref for OpBag<O> {
+impl<O> Deref for OpList<O> {
     type Target = [O];
 
     fn deref(&self) -> &Self::Target { &self.operations }

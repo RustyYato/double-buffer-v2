@@ -3,7 +3,7 @@ use crate::{
     traits::{Operation, Strategy, StrongBuffer},
 };
 
-use crate::op_bag::OpBag;
+use crate::op_list::OpList;
 
 pub struct OpWriter<I, O, T = <<I as StrongBuffer>::Strategy as Strategy>::WriterTag, C = Capture<I>> {
     // this will always be `Some` if nothing panics during swaps
@@ -11,7 +11,7 @@ pub struct OpWriter<I, O, T = <<I as StrongBuffer>::Strategy as Strategy>::Write
     // to be checked
     swap: Option<Swap<C>>,
     writer: Writer<I, T>,
-    ops: OpBag<O>,
+    ops: OpList<O>,
 }
 
 #[derive(Debug)]
@@ -29,7 +29,7 @@ where
     fn from(mut writer: Writer<I>) -> Self {
         let swap = unsafe { writer.start_buffer_swap() };
         Self {
-            ops: OpBag::new(),
+            ops: OpList::new(),
             writer,
             swap: Some(swap),
         }
@@ -37,7 +37,7 @@ where
 }
 
 pub struct Operations<'a, O> {
-    bag: &'a mut OpBag<O>,
+    list: &'a mut OpList<O>,
 }
 
 impl<I: StrongBuffer, O> OpWriter<I, O> {
@@ -71,7 +71,7 @@ impl<I: StrongBuffer, O: Operation<Buffer<I>>> OpWriter<I, O> {
         let swap = self.swap.take().ok_or(PoisonError(()))?;
         let ops = &mut self.ops;
         let writer = &self.writer;
-        let f = move || f(writer, Operations { bag: ops });
+        let f = move || f(writer, Operations { list: ops });
         self.writer.finish_buffer_swap_with(swap, f);
         self.ops.apply(self.writer.get_mut());
         self.revive_from_poisoned_unchecked();
@@ -92,19 +92,19 @@ impl<I, O, T, C> Extend<O> for OpWriter<I, O, T, C> {
 }
 
 impl<O> Operations<'_, O> {
-    pub fn applied(&self) -> usize { self.bag.applied() }
+    pub fn applied(&self) -> usize { self.list.applied() }
 
-    pub fn push(&mut self, op: O) { self.bag.push(op); }
+    pub fn push(&mut self, op: O) { self.list.push(op); }
 
-    pub fn reserve(&mut self, additional: usize) { self.bag.reserve(additional) }
+    pub fn reserve(&mut self, additional: usize) { self.list.reserve(additional) }
 }
 
 impl<O> Extend<O> for Operations<'_, O> {
-    fn extend<T: IntoIterator<Item = O>>(&mut self, iter: T) { self.bag.extend(iter) }
+    fn extend<T: IntoIterator<Item = O>>(&mut self, iter: T) { self.list.extend(iter) }
 }
 
 impl<O> core::ops::Deref for Operations<'_, O> {
     type Target = [O];
 
-    fn deref(&self) -> &Self::Target { &self.bag }
+    fn deref(&self) -> &Self::Target { &self.list }
 }

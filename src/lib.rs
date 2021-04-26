@@ -11,7 +11,7 @@ pub mod strategy;
 pub mod traits;
 
 #[cfg(feature = "alloc")]
-pub mod op_bag;
+pub mod op_list;
 #[cfg(feature = "alloc")]
 pub mod thin;
 
