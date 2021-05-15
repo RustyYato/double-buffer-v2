@@ -5,6 +5,24 @@ use crate::{
 use core::sync::atomic::AtomicBool;
 use parking_lot::Condvar;
 
+#[cfg(feature = "alloc")]
+type Strong<B> = std::sync::Arc<crate::base::Inner<[B; 2], SavingParkStrategy>>;
+#[cfg(feature = "alloc")]
+type Weak<B> = std::sync::Weak<crate::base::Inner<[B; 2], SavingParkStrategy>>;
+
+#[cfg(feature = "alloc")]
+pub fn new<B: Default>() -> (crate::base::Writer<Strong<B>>, crate::base::Reader<Weak<B>>) {
+    from_buffers(B::default(), B::default())
+}
+
+#[cfg(feature = "alloc")]
+pub fn from_buffers<B>(front: B, back: B) -> (crate::base::Writer<Strong<B>>, crate::base::Reader<Weak<B>>) {
+    crate::base::new(std::sync::Arc::new(crate::base::Inner::from_raw_parts(
+        SavingParkStrategy::default(),
+        [front, back],
+    )))
+}
+
 #[derive(Default)]
 pub struct SavingParkStrategy {
     raw: super::SavingStrategy,

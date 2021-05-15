@@ -12,6 +12,24 @@ const ONE_READER: usize = 0b100;
 const PENDING_SWAP: usize = 0b01;
 const PENDING_READERS: usize = 0b10;
 
+#[cfg(feature = "alloc")]
+type Strong<B> = std::sync::Arc<crate::base::Inner<[B; 2], SyncStrategy>>;
+#[cfg(feature = "alloc")]
+type Weak<B> = std::sync::Weak<crate::base::Inner<[B; 2], SyncStrategy>>;
+
+#[cfg(feature = "alloc")]
+pub fn new<B: Default>() -> (crate::base::Writer<Strong<B>>, crate::base::Reader<Weak<B>>) {
+    from_buffers(B::default(), B::default())
+}
+
+#[cfg(feature = "alloc")]
+pub fn from_buffers<B>(front: B, back: B) -> (crate::base::Writer<Strong<B>>, crate::base::Reader<Weak<B>>) {
+    crate::base::new(std::sync::Arc::new(crate::base::Inner::from_raw_parts(
+        SyncStrategy::INIT,
+        [front, back],
+    )))
+}
+
 pub struct SyncStrategy {
     lock: AtomicUsize,
 }

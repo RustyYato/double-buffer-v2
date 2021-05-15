@@ -156,3 +156,11 @@ impl<I: StrongBuffer> Writer<I> {
         finish_swap_with(&self.inner.strategy, &self.tag, swap.0, f)
     }
 }
+
+impl<I: StrongBuffer> AsRef<Buffer<I>> for Writer<I> {
+    fn as_ref(&self) -> &Buffer<I> { self.get() }
+}
+
+impl<I: StrongBuffer> AsMut<Buffer<I>> for Writer<I> {
+    fn as_mut(&mut self) -> &mut Buffer<I> { self.get_mut() }
+}

@@ -2,8 +2,26 @@ use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use crate::traits::Strategy;
 
+#[cfg(feature = "alloc")]
+type Strong<B> = std::sync::Arc<crate::base::Inner<[B; 2], AtomicStrategy>>;
+#[cfg(feature = "alloc")]
+type Weak<B> = std::sync::Weak<crate::base::Inner<[B; 2], AtomicStrategy>>;
+
+#[cfg(feature = "alloc")]
+pub fn new<B: Default>() -> (crate::base::Writer<Strong<B>>, crate::base::Reader<Weak<B>>) {
+    from_buffers(B::default(), B::default())
+}
+
+#[cfg(feature = "alloc")]
+pub fn from_buffers<B>(front: B, back: B) -> (crate::base::Writer<Strong<B>>, crate::base::Reader<Weak<B>>) {
+    crate::base::new(std::sync::Arc::new(crate::base::Inner::from_raw_parts(
+        AtomicStrategy::default(),
+        [front, back],
+    )))
+}
+
 #[derive(Default)]
-pub struct Atomic {
+pub struct AtomicStrategy {
     readers: AtomicUsize,
 }
 
@@ -15,7 +33,7 @@ pub struct Capture(());
 #[derive(Debug)]
 pub struct CaptureError(());
 
-unsafe impl Strategy for Atomic {
+unsafe impl Strategy for AtomicStrategy {
     type Which = AtomicBool;
     type ReaderTag = ReaderTag;
     type WriterTag = WriterTag;

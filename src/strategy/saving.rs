@@ -10,6 +10,24 @@ use spin::Mutex;
 #[cfg(feature = "std")]
 pub(crate) mod park;
 
+#[cfg(feature = "alloc")]
+type Strong<B> = std::sync::Arc<crate::base::Inner<[B; 2], SavingStrategy>>;
+#[cfg(feature = "alloc")]
+type Weak<B> = std::sync::Weak<crate::base::Inner<[B; 2], SavingStrategy>>;
+
+#[cfg(feature = "alloc")]
+pub fn new<B: Default>() -> (crate::base::Writer<Strong<B>>, crate::base::Reader<Weak<B>>) {
+    from_buffers(B::default(), B::default())
+}
+
+#[cfg(feature = "alloc")]
+pub fn from_buffers<B>(front: B, back: B) -> (crate::base::Writer<Strong<B>>, crate::base::Reader<Weak<B>>) {
+    crate::base::new(std::sync::Arc::new(crate::base::Inner::from_raw_parts(
+        SavingStrategy::default(),
+        [front, back],
+    )))
+}
+
 #[derive(Default)]
 pub struct SavingStrategy {
     tag_list: Mutex<Vec<Thin<AtomicUsize>>>,
@@ -66,6 +84,7 @@ unsafe impl Strategy for SavingStrategy {
 
             let value = tag.load(Ordering::Acquire);
 
+            // if the reader is alive and reading the value
             if is_alive && value & 1 == 1 {
                 active.push((value, tag.clone()))
             }

@@ -2,6 +2,24 @@ use core::cell::Cell;
 
 use crate::traits::Strategy;
 
+#[cfg(feature = "alloc")]
+type Strong<B> = std::rc::Rc<crate::base::Inner<[B; 2], LocalStrategy>>;
+#[cfg(feature = "alloc")]
+type Weak<B> = std::rc::Weak<crate::base::Inner<[B; 2], LocalStrategy>>;
+
+#[cfg(feature = "alloc")]
+pub fn new<B: Default>() -> (crate::base::Writer<Strong<B>>, crate::base::Reader<Weak<B>>) {
+    from_buffers(B::default(), B::default())
+}
+
+#[cfg(feature = "alloc")]
+pub fn from_buffers<B>(front: B, back: B) -> (crate::base::Writer<Strong<B>>, crate::base::Reader<Weak<B>>) {
+    crate::base::new(std::rc::Rc::new(crate::base::Inner::from_raw_parts(
+        LocalStrategy::default(),
+        [front, back],
+    )))
+}
+
 #[derive(Default)]
 pub struct LocalStrategy {
     readers: Cell<usize>,
