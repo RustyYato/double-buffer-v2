@@ -1,5 +1,5 @@
 use crate::{
-    base::{Buffer, Capture, Reader, Split, Swap, Writer},
+    base::{Buffer, Capture, Reader, Swap, Writer},
     traits::{Operation, Strategy, StrongBuffer},
 };
 
@@ -43,8 +43,6 @@ impl<I: StrongBuffer, O> OpWriter<I, O> {
     pub fn reader(&self) -> Reader<I::Weak> { self.writer.reader() }
 
     pub fn get(&self) -> &Buffer<I> { self.writer.get() }
-
-    pub fn split(&self) -> Split<'_, Buffer<I>> { self.writer.split() }
 }
 
 impl<I: StrongBuffer, O: Operation<Buffer<I>>> OpWriter<I, O> {
@@ -52,10 +50,9 @@ impl<I: StrongBuffer, O: Operation<Buffer<I>>> OpWriter<I, O> {
 
     pub fn swap_buffers_with<F: FnMut(&Writer<I>, Operations<'_, O>)>(&mut self, mut f: F) {
         if let Some(swap) = self.swap.take() {
-            let ops = &mut self.ops;
-            let writer = &self.writer;
-            let f = move || f(writer, Operations { list: ops });
-            self.writer.finish_buffer_swap_with(swap, f);
+            let (writer, mut ops) = self.as_mut_parts();
+            let f = move || f(writer, ops.by_ref());
+            writer.finish_buffer_swap_with(swap, f);
         }
         self.ops.apply(self.writer.get_mut());
         self.swap = Some(unsafe { self.writer.start_buffer_swap() })
@@ -63,6 +60,10 @@ impl<I: StrongBuffer, O: Operation<Buffer<I>>> OpWriter<I, O> {
 }
 
 impl<I, O, T, C> OpWriter<I, O, T, C> {
+    pub fn as_mut_parts(&mut self) -> (&Writer<I, T>, Operations<'_, O>) {
+        (&self.writer, Operations { list: &mut self.ops })
+    }
+
     pub fn applied(&self) -> usize { self.ops.applied() }
 
     pub fn reserve(&mut self, additional: usize) { self.ops.reserve(additional) }
@@ -76,12 +77,20 @@ impl<I, O, T, C> Extend<O> for OpWriter<I, O, T, C> {
     fn extend<Iter: IntoIterator<Item = O>>(&mut self, iter: Iter) { self.ops.extend(iter) }
 }
 
+impl<I, O, T, C> core::ops::Deref for OpWriter<I, O, T, C> {
+    type Target = Writer<I, T>;
+
+    fn deref(&self) -> &Self::Target { &self.writer }
+}
+
 impl<O> Operations<'_, O> {
     pub fn applied(&self) -> usize { self.list.applied() }
 
     pub fn push(&mut self, op: O) { self.list.push(op); }
 
     pub fn reserve(&mut self, additional: usize) { self.list.reserve(additional) }
+
+    pub fn by_ref(&mut self) -> Operations<'_, O> { Operations { list: &mut self.list } }
 }
 
 impl<O> Extend<O> for Operations<'_, O> {
