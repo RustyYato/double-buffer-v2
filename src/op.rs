@@ -62,6 +62,11 @@ impl<I: StrongBuffer, O: Operation<Buffer<I>>> OpWriter<I, O> {
 
         (&mut self.writer, &mut self.ops)
     }
+
+    pub fn into_raw_parts(mut self) -> (Writer<I>, OpList<O>) {
+        self.finish_swap();
+        (self.writer, self.ops)
+    }
 }
 
 impl<I, O, T, C> OpWriter<I, O, T, C> {
