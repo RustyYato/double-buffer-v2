@@ -3,7 +3,7 @@ use crate::traits::RawDoubleBuffer;
 unsafe impl<B> RawDoubleBuffer for [B; 2] {
     type Buffer = B;
 
-    unsafe fn split(this: *mut Self, which: bool) -> (*mut Self::Buffer, *mut Self::Buffer) {
+    unsafe fn split(this: *mut Self, which: bool) -> (*mut Self::Buffer, *const Self::Buffer) {
         let ptr = this as *mut B;
         let writer = usize::from(which);
         let reader = usize::from(!which);
@@ -14,7 +14,7 @@ unsafe impl<B> RawDoubleBuffer for [B; 2] {
 unsafe impl<B> RawDoubleBuffer for [B] {
     type Buffer = [B];
 
-    unsafe fn split(this: *mut Self, which: bool) -> (*mut Self::Buffer, *mut Self::Buffer) {
+    unsafe fn split(this: *mut Self, which: bool) -> (*mut Self::Buffer, *const Self::Buffer) {
         let len = (*this).len();
         let len = len >> 1;
         let ptr = this as *mut B;

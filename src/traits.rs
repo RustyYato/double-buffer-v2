@@ -68,7 +68,7 @@ pub unsafe trait Strategy {
 pub unsafe trait RawDoubleBuffer {
     type Buffer: ?Sized;
 
-    unsafe fn split(this: *mut Self, which: bool) -> (*mut Self::Buffer, *mut Self::Buffer);
+    unsafe fn split(this: *mut Self, which: bool) -> (*mut Self::Buffer, *const Self::Buffer);
 }
 
 pub unsafe trait TrustedRadium: Radium {
