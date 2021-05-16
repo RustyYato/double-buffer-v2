@@ -26,13 +26,7 @@ impl<I: StrongBuffer, O> From<Writer<I>> for OpWriter<I, O>
 where
     I::Strategy: WaitingStrategy,
 {
-    fn from(writer: Writer<I>) -> Self {
-        Self {
-            ops: OpList::new(),
-            writer,
-            swap: None,
-        }
-    }
+    fn from(writer: Writer<I>) -> Self { Self::new_unchecked(writer) }
 }
 
 pub struct Operations<'a, O> {
@@ -71,6 +65,14 @@ impl<I: StrongBuffer, O: Operation<Buffer<I>>> OpWriter<I, O> {
 }
 
 impl<I, O, T, C> OpWriter<I, O, T, C> {
+    pub const fn new_unchecked(writer: Writer<I, T>) -> Self {
+        Self {
+            swap: None,
+            writer,
+            ops: OpList::new(),
+        }
+    }
+
     pub fn as_mut_parts(&mut self) -> (&Writer<I, T>, Operations<'_, O>) {
         (&self.writer, Operations { list: &mut self.ops })
     }
