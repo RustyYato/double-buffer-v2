@@ -26,12 +26,11 @@ impl<I: StrongBuffer, O> From<Writer<I>> for OpWriter<I, O>
 where
     I::Strategy: WaitingStrategy,
 {
-    fn from(mut writer: Writer<I>) -> Self {
-        let swap = unsafe { writer.start_buffer_swap() };
+    fn from(writer: Writer<I>) -> Self {
         Self {
             ops: OpList::new(),
             writer,
-            swap: Some(swap),
+            swap: None,
         }
     }
 }
@@ -51,34 +50,16 @@ impl<I: StrongBuffer, O> OpWriter<I, O> {
 impl<I: StrongBuffer, O: Operation<Buffer<I>>> OpWriter<I, O> {
     pub fn swap_buffers(&mut self) { self.swap_buffers_with(|_, _| ()) }
 
-    pub fn swap_buffers_with<F: FnMut(&Writer<I>, Operations<'_, O>)>(&mut self, f: F) {
-        #[cold]
-        #[inline(never)]
-        fn swap_buffers_fail() -> ! { panic!("Could not swap poisoned buffers") }
-
-        match self.try_swap_buffers_with(f) {
-            Ok(()) => (),
-            Err(PoisonError(())) => swap_buffers_fail(),
+    pub fn swap_buffers_with<F: FnMut(&Writer<I>, Operations<'_, O>)>(&mut self, mut f: F) {
+        if let Some(swap) = self.swap.take() {
+            let ops = &mut self.ops;
+            let writer = &self.writer;
+            let f = move || f(writer, Operations { list: ops });
+            self.writer.finish_buffer_swap_with(swap, f);
         }
-    }
-
-    pub fn try_swap_buffers(&mut self) -> Result<(), PoisonError> { self.try_swap_buffers_with(|_, _| ()) }
-
-    pub fn try_swap_buffers_with<F: FnMut(&Writer<I>, Operations<'_, O>)>(
-        &mut self,
-        mut f: F,
-    ) -> Result<(), PoisonError> {
-        let swap = self.swap.take().ok_or(PoisonError(()))?;
-        let ops = &mut self.ops;
-        let writer = &self.writer;
-        let f = move || f(writer, Operations { list: ops });
-        self.writer.finish_buffer_swap_with(swap, f);
         self.ops.apply(self.writer.get_mut());
-        self.revive_from_poisoned_unchecked();
-        Ok(())
+        self.swap = Some(unsafe { self.writer.start_buffer_swap() })
     }
-
-    pub fn revive_from_poisoned_unchecked(&mut self) { self.swap = Some(unsafe { self.writer.start_buffer_swap() }) }
 }
 
 impl<I, O, T, C> OpWriter<I, O, T, C> {
