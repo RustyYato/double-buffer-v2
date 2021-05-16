@@ -23,12 +23,14 @@ impl<O> OpList<O> {
         O: Operation<B>,
     {
         let applied = core::mem::take(&mut self.applied);
+        
         for operation in self.operations.drain(..applied) {
             operation.apply_final(buffer);
         }
 
+        self.applied = self.operations.len();
+
         for operation in self.operations.iter_mut() {
-            self.applied += 1;
             operation.apply(buffer);
         }
     }
