@@ -63,6 +63,10 @@ impl<I: StrongBuffer, O: Operation<Buffer<I>>> OpWriter<I, O> {
 }
 
 impl<I, O, T, C> OpWriter<I, O, T, C> {
+    pub fn applied(&self) -> usize { self.ops.applied() }
+
+    pub fn reserve(&mut self, additional: usize) { self.ops.reserve(additional) }
+
     pub fn push(&mut self, op: O) { self.ops.push(op) }
 
     pub fn ops(&self) -> &[O] { &self.ops }
