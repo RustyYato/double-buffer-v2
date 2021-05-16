@@ -48,14 +48,25 @@ impl<I: StrongBuffer, O> OpWriter<I, O> {
 impl<I: StrongBuffer, O: Operation<Buffer<I>>> OpWriter<I, O> {
     pub fn swap_buffers(&mut self) { self.swap_buffers_with(|_, _| ()) }
 
-    pub fn swap_buffers_with<F: FnMut(&Writer<I>, Operations<'_, O>)>(&mut self, mut f: F) {
+    pub fn swap_buffers_with<F: FnMut(&Writer<I>, Operations<'_, O>)>(&mut self, f: F) {
+        self.finish_swap_with(f);
+        self.ops.apply(self.writer.get_mut());
+        self.swap = Some(unsafe { self.writer.start_buffer_swap() })
+    }
+
+    pub fn finish_swap(&mut self) -> (&mut Writer<I>, &mut OpList<O>) { self.finish_swap_with(|_, _| ()) }
+
+    pub fn finish_swap_with<F: FnMut(&Writer<I>, Operations<'_, O>)>(
+        &mut self,
+        mut f: F,
+    ) -> (&mut Writer<I>, &mut OpList<O>) {
         if let Some(swap) = self.swap.take() {
             let (writer, mut ops) = self.as_mut_parts();
             let f = move || f(writer, ops.by_ref());
             writer.finish_buffer_swap_with(swap, f);
         }
-        self.ops.apply(self.writer.get_mut());
-        self.swap = Some(unsafe { self.writer.start_buffer_swap() })
+
+        (&mut self.writer, &mut self.ops)
     }
 }
 
