@@ -47,6 +47,7 @@ impl Default for SyncStrategy {
     fn default() -> Self { Self::INIT }
 }
 
+#[derive(Clone, Copy)]
 pub struct ReaderTag(());
 pub struct WriterTag(());
 pub struct RawGuard(());

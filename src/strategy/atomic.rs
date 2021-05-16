@@ -25,6 +25,7 @@ pub struct AtomicStrategy {
     readers: AtomicUsize,
 }
 
+#[derive(Clone, Copy)]
 pub struct ReaderTag(());
 pub struct WriterTag(());
 pub struct RawGuard(());

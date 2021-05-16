@@ -96,6 +96,8 @@ impl<I: WeakBuffer<UpgradeError = core::convert::Infallible>> Clone for Reader<I
     }
 }
 
+impl<I: Copy + WeakBuffer<UpgradeError = core::convert::Infallible>> Copy for Reader<I> where <I::Strategy as Strategy>::ReaderTag: Copy {}
+
 impl<I: StrongBuffer, T: ?Sized> Deref for ReaderGuard<'_, I, T> {
     type Target = T;
 

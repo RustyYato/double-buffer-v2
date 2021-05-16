@@ -25,6 +25,7 @@ pub struct LocalStrategy {
     readers: Cell<usize>,
 }
 
+#[derive(Clone, Copy)]
 pub struct ReaderTag(());
 pub struct WriterTag(());
 pub struct RawGuard(());
