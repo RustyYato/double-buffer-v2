@@ -63,6 +63,17 @@ impl<I: WeakBuffer> Reader<I> {
     pub fn is_dangling(&self) -> bool { self.inner.is_dangling() }
 
     #[inline]
+    pub fn shared_get(&self) -> ReaderGuard<'_, I::Strong>
+    where
+        I: WeakBuffer<UpgradeError = core::convert::Infallible>,
+        <I::Strategy as Strategy>::ReaderTag: Clone,
+    {
+        let keep_alive = self.inner.upgrade().unwrap_or_else(|inf| match inf {});
+        let mut tag = self.tag.clone();
+        unsafe { Self::get_with_tag(keep_alive, &mut tag) }
+    }
+
+    #[inline]
     pub fn get(&mut self) -> ReaderGuard<'_, I::Strong> {
         self.try_get().expect("Tried to reader from a dangling `Reader<B>`")
     }
@@ -70,20 +81,28 @@ impl<I: WeakBuffer> Reader<I> {
     #[inline]
     pub fn try_get(&mut self) -> Result<ReaderGuard<'_, I::Strong>, I::UpgradeError> {
         let keep_alive = self.inner.upgrade()?;
+        Ok(unsafe { Self::get_with_tag(keep_alive, &mut self.tag) })
+    }
+
+    #[inline]
+    unsafe fn get_with_tag<'a>(
+        keep_alive: I::Strong,
+        tag: &mut <I::Strategy as Strategy>::ReaderTag,
+    ) -> ReaderGuard<'a, I::Strong> {
         let inner = &*keep_alive;
-        let guard = inner.strategy.begin_guard(&mut self.tag);
+        let guard = inner.strategy.begin_guard(tag);
 
         let which = inner.which.load(Ordering::Acquire);
-        let buffer = unsafe { inner.raw.read(which) };
+        let buffer = inner.raw.read(which);
 
-        Ok(ReaderGuard {
-            value: unsafe { &*buffer },
+        ReaderGuard {
+            value: &*buffer,
             raw: RawGuard {
                 reader: PhantomData,
                 raw: ManuallyDrop::new(guard),
                 keep_alive,
             },
-        })
+        }
     }
 }
 
@@ -96,7 +115,10 @@ impl<I: WeakBuffer<UpgradeError = core::convert::Infallible>> Clone for Reader<I
     }
 }
 
-impl<I: Copy + WeakBuffer<UpgradeError = core::convert::Infallible>> Copy for Reader<I> where <I::Strategy as Strategy>::ReaderTag: Copy {}
+impl<I: Copy + WeakBuffer<UpgradeError = core::convert::Infallible>> Copy for Reader<I> where
+    <I::Strategy as Strategy>::ReaderTag: Copy
+{
+}
 
 impl<I: StrongBuffer, T: ?Sized> Deref for ReaderGuard<'_, I, T> {
     type Target = T;
