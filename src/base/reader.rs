@@ -60,10 +60,22 @@ impl<I: WeakBuffer> Reader<I> {
         })
     }
 
+    #[inline]
     pub fn is_dangling(&self) -> bool { self.inner.is_dangling() }
 
     #[inline]
-    pub fn shared_get(&self) -> ReaderGuard<'_, I::Strong>
+    pub fn force_clone(&self) -> Self
+    where
+        <I::Strategy as Strategy>::ReaderTag: Clone,
+    {
+        Reader {
+            inner: self.inner.clone(),
+            tag: self.tag.clone(),
+        }
+    }
+
+    #[inline]
+    pub fn force_get(&self) -> ReaderGuard<'_, I::Strong>
     where
         I: WeakBuffer<UpgradeError = core::convert::Infallible>,
         <I::Strategy as Strategy>::ReaderTag: Clone,
