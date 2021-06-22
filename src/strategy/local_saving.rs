@@ -92,7 +92,7 @@ unsafe impl Strategy for LocalSavingStrategy {
 
     #[inline]
     fn readers_have_exited(&self, capture: &mut Self::Capture) -> bool {
-        capture.active.retain(|(old_value, tag)| *old_value != tag.get());
+        capture.active.retain(|(old_value, tag)| *old_value == tag.get());
 
         capture.active.is_empty()
     }

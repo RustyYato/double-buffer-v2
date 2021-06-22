@@ -102,7 +102,7 @@ unsafe impl Strategy for SavingStrategy {
     fn readers_have_exited(&self, capture: &mut Self::Capture) -> bool {
         capture
             .active
-            .retain(|(old_value, tag)| *old_value != tag.load(Ordering::Relaxed));
+            .retain(|(old_value, tag)| *old_value == tag.load(Ordering::Relaxed));
 
         let readers_have_exited = capture.active.is_empty();
 

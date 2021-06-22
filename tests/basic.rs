@@ -33,7 +33,9 @@ fn basic_op_writer() {
     assert_eq!(*r.get(), 0);
     w.push(Op(-2));
     assert_eq!(*r.get(), 0);
+    let a = r.get();
     w.swap_buffers();
+    drop(a);
     assert_eq!(*r.get(), -2);
     w.push(Op(2));
     assert_eq!(*r.get(), -2);
