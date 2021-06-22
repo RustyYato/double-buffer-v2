@@ -1,33 +1,33 @@
+#![forbid(unsafe_code)]
+
 use crate::{
-    base::{Buffer, Capture, Reader, Swap, Writer},
+    base::{Buffer, Capture, Reader, Writer},
+    deferred::{DeferredWriter, WaitingStrategy},
     traits::{Operation, Strategy, StrongBuffer},
 };
 
 use crate::op_list::OpList;
 
 pub struct OpWriter<I, O, T = <<I as StrongBuffer>::Strategy as Strategy>::WriterTag, C = Capture<I>> {
-    // this will always be `Some` if nothing panics during swaps
-    // the code in this crate won't panic, so only user code needs
-    // to be checked
-    swap: Option<Swap<C>>,
-    writer: Writer<I, T>,
+    writer: DeferredWriter<I, T, C>,
     ops: OpList<O>,
 }
 
 #[derive(Debug)]
 pub struct PoisonError(());
 
-pub trait WaitingStrategy {}
-impl WaitingStrategy for crate::strategy::saving::SavingStrategy {}
-impl WaitingStrategy for crate::strategy::local_saving::LocalSavingStrategy {}
-#[cfg(feature = "std")]
-impl WaitingStrategy for crate::strategy::saving_park::SavingParkStrategy {}
-
 impl<I: StrongBuffer, O> From<Writer<I>> for OpWriter<I, O>
 where
     I::Strategy: WaitingStrategy,
 {
-    fn from(writer: Writer<I>) -> Self { Self::new_unchecked(writer) }
+    fn from(writer: Writer<I>) -> Self { Self::new(writer.into()) }
+}
+
+impl<I: StrongBuffer, O> From<DeferredWriter<I>> for OpWriter<I, O>
+where
+    I::Strategy: WaitingStrategy,
+{
+    fn from(writer: DeferredWriter<I>) -> Self { Self::new(writer) }
 }
 
 pub struct Operations<'a, O> {
@@ -44,9 +44,9 @@ impl<I: StrongBuffer, O: Operation<Buffer<I>>> OpWriter<I, O> {
     pub fn swap_buffers(&mut self) { self.swap_buffers_with(|_, _| ()) }
 
     pub fn swap_buffers_with<F: FnMut(&Writer<I>, Operations<'_, O>)>(&mut self, f: F) {
-        self.finish_swap_with(f);
-        self.ops.apply(self.writer.get_mut());
-        self.swap = Some(unsafe { self.writer.start_buffer_swap() })
+        let (writer, ops) = self.finish_swap_with(f);
+        ops.apply(writer.get_mut());
+        self.start_swap()
     }
 
     pub fn finish_swap(&mut self) -> (&mut Writer<I>, &mut OpList<O>) { self.finish_swap_with(|_, _| ()) }
@@ -55,25 +55,19 @@ impl<I: StrongBuffer, O: Operation<Buffer<I>>> OpWriter<I, O> {
         &mut self,
         mut f: F,
     ) -> (&mut Writer<I>, &mut OpList<O>) {
-        if let Some(swap) = self.swap.take() {
-            let (writer, mut ops) = self.as_mut_parts();
-            let f = move || f(writer, ops.by_ref());
-            writer.finish_buffer_swap_with(swap, f);
-        }
-
-        (&mut self.writer, &mut self.ops)
+        let mut ops = Operations { list: &mut self.ops };
+        let f = move |writer: &_| f(writer, ops.by_ref());
+        (self.writer.finish_swap_with(f), &mut self.ops)
     }
 
-    pub fn into_raw_parts(mut self) -> (Writer<I>, OpList<O>) {
-        self.finish_swap();
-        (self.writer, self.ops)
-    }
+    pub fn start_swap(&mut self) { self.writer.start_swap() }
+
+    pub fn into_raw_parts(self) -> (DeferredWriter<I>, OpList<O>) { (self.writer, self.ops) }
 }
 
 impl<I, O, T, C> OpWriter<I, O, T, C> {
-    pub const fn new_unchecked(writer: Writer<I, T>) -> Self {
+    pub const fn new(writer: DeferredWriter<I, T, C>) -> Self {
         Self {
-            swap: None,
             writer,
             ops: OpList::new(),
         }

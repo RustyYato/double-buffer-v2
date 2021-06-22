@@ -5,6 +5,7 @@
 extern crate alloc as std;
 
 pub mod base;
+pub mod deferred;
 #[cfg(feature = "alloc")]
 pub mod op;
 pub mod strategy;
