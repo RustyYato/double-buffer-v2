@@ -1,6 +1,7 @@
-use std::{boxed::Box, cell::UnsafeCell};
+use std::boxed::Box;
 
 use core::{
+    cell::UnsafeCell,
     marker::PhantomData,
     ops::Deref,
     ptr::NonNull,

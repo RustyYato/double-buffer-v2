@@ -1,5 +1,6 @@
 use crate::{thin::Thin, traits::Strategy};
 use core::cell::{Cell, UnsafeCell};
+use std::vec::Vec;
 
 #[cfg(feature = "alloc")]
 type Strong<B> = std::sync::Arc<crate::base::Inner<[B; 2], LocalSavingStrategy>>;

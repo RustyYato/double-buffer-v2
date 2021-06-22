@@ -1,6 +1,8 @@
 use crate::{athin::Athin, traits::Strategy};
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+#[cfg(feature = "std")]
 use parking_lot_core::SpinWait;
+use std::vec::Vec;
 
 #[cfg(feature = "std")]
 use parking_lot::Mutex;
@@ -41,6 +43,7 @@ pub struct FastCapture(());
 
 pub struct Capture {
     active: Vec<(usize, Athin<AtomicUsize>)>,
+    #[cfg(feature = "std")]
     backoff: SpinWait,
 }
 
@@ -96,6 +99,7 @@ unsafe impl Strategy for SavingStrategy {
 
         Capture {
             active,
+            #[cfg(feature = "std")]
             backoff: SpinWait::new(),
         }
     }
@@ -116,6 +120,7 @@ unsafe impl Strategy for SavingStrategy {
     }
 
     #[cold]
+    #[cfg(feature = "std")]
     fn pause(&self, capture: &mut Self::Capture) {
         if !capture.backoff.spin() {
             capture.backoff.reset()

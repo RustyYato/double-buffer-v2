@@ -12,7 +12,9 @@ pub struct DeferredWriter<I, T = WriterTag<I>, C = Capture<I>> {
 }
 
 pub trait WaitingStrategy {}
+#[cfg(feature = "alloc")]
 impl WaitingStrategy for crate::strategy::saving::SavingStrategy {}
+#[cfg(feature = "alloc")]
 impl WaitingStrategy for crate::strategy::local_saving::LocalSavingStrategy {}
 #[cfg(feature = "std")]
 impl WaitingStrategy for crate::strategy::saving_park::SavingParkStrategy {}
