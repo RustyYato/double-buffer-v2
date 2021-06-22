@@ -26,7 +26,7 @@ unsafe impl<B> RawDoubleBuffer for [B] {
 
         (
             core::ptr::slice_from_raw_parts_mut(writer, len),
-            core::ptr::slice_from_raw_parts_mut(reader, len),
+            core::ptr::slice_from_raw_parts(reader, len),
         )
     }
 }
