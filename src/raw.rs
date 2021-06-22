@@ -15,8 +15,7 @@ unsafe impl<B> RawDoubleBuffer for [B] {
     type Buffer = [B];
 
     unsafe fn split(this: *mut Self, which: bool) -> (*mut Self::Buffer, *const Self::Buffer) {
-        let len = (*this).len();
-        let len = len >> 1;
+        let len = (*this).len() / 2;
         let ptr = this as *mut B;
 
         let writer = usize::from(which);

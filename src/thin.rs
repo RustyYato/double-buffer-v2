@@ -1,30 +1,21 @@
+use core::{cell::Cell, marker::PhantomData, ops::Deref, ptr::NonNull};
 use std::boxed::Box;
-
-use core::{
-    marker::PhantomData,
-    ops::Deref,
-    ptr::NonNull,
-    sync::atomic::{AtomicUsize, Ordering},
-};
 
 pub struct Thin<T: ?Sized> {
     inner: NonNull<ThinInner<T>>,
     drop: PhantomData<T>,
 }
 
-unsafe impl<T: Send + Sync + ?Sized> Send for Thin<T> {}
-unsafe impl<T: Send + Sync + ?Sized> Sync for Thin<T> {}
-
 #[repr(C)]
 pub struct ThinInner<T: ?Sized> {
-    count: AtomicUsize,
+    count: Cell<usize>,
     value: T,
 }
 
 impl<T> ThinInner<T> {
     pub fn new(value: T) -> Self {
         Self {
-            count: AtomicUsize::new(0),
+            count: Cell::new(0),
             value,
         }
     }
@@ -35,7 +26,7 @@ impl<T> Thin<T> {
 }
 
 impl<T: ?Sized> Thin<T> {
-    pub fn strong_count(&self) -> usize { unsafe { self.inner.as_ref().count.load(Ordering::Acquire) } }
+    pub fn strong_count(&self) -> usize { unsafe { self.inner.as_ref().count.get() } }
 }
 
 impl<T: ?Sized> From<Box<ThinInner<T>>> for Thin<T> {
@@ -50,17 +41,14 @@ impl<T: ?Sized> From<Box<ThinInner<T>>> for Thin<T> {
 
 impl<T: ?Sized> Clone for Thin<T> {
     fn clone(&self) -> Self {
-        let count = unsafe { self.inner.as_ref().count.fetch_add(1, Ordering::Relaxed) };
-
-        if count >= (isize::MAX as usize) {
-            struct Abort;
-
-            impl Drop for Abort {
-                fn drop(&mut self) { panic!() }
-            }
-
-            let _abort = Abort;
-            panic!();
+        unsafe {
+            let count = &self.inner.as_ref().count;
+            count.set(
+                count
+                    .get()
+                    .checked_add(1)
+                    .expect("tried to clone a local thin too many times"),
+            );
         }
 
         Self {
@@ -72,7 +60,12 @@ impl<T: ?Sized> Clone for Thin<T> {
 
 impl<T: ?Sized> Drop for Thin<T> {
     fn drop(&mut self) {
-        let count = unsafe { self.inner.as_ref().count.fetch_sub(1, Ordering::Release) };
+        let count = unsafe {
+            let count = &self.inner.as_ref().count;
+            let old = count.get();
+            count.set(old.wrapping_sub(1));
+            old
+        };
         if count == 0 {
             unsafe {
                 Box::from_raw(self.inner.as_ptr());

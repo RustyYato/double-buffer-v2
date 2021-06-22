@@ -1,5 +1,5 @@
 use crate::{
-    thin,
+    athin, thin,
     traits::{RawParts, StrongBuffer, WeakBuffer},
 };
 use std::{boxed::Box, rc, sync};
@@ -76,6 +76,38 @@ unsafe impl<S: Strategy, R: RawDoubleBuffer + ?Sized> WeakBuffer for rc::Weak<In
     fn is_dangling(&self) -> bool { rc::Weak::strong_count(self) == 0 }
 
     fn upgrade(&self) -> Result<Self::Strong, Self::UpgradeError> { self.upgrade().ok_or(UpgradeError) }
+}
+
+unsafe impl<S: Strategy, R: RawDoubleBuffer + ?Sized> RawParts for Box<athin::AthinInner<Inner<R, S>>> {
+    type Strategy = S;
+    type Raw = R;
+
+    type Strong = athin::Athin<Inner<R, S>>;
+    type Weak = athin::Athin<Inner<R, S>>;
+
+    fn raw_parts(self) -> (Self::Strong, Self::Weak) {
+        let thin = athin::Athin::from(self);
+        (thin.clone(), thin)
+    }
+}
+
+unsafe impl<S: Strategy, R: RawDoubleBuffer + ?Sized> StrongBuffer for athin::Athin<Inner<R, S>> {
+    type Strategy = S;
+    type Raw = R;
+    type Weak = Self;
+
+    fn downgrade(&self) -> Self::Weak { self.clone() }
+}
+
+unsafe impl<S: Strategy, R: RawDoubleBuffer + ?Sized> WeakBuffer for athin::Athin<Inner<R, S>> {
+    type Strategy = S;
+    type Raw = R;
+    type Strong = Self;
+    type UpgradeError = core::convert::Infallible;
+
+    fn is_dangling(&self) -> bool { false }
+
+    fn upgrade(&self) -> Result<Self::Strong, Self::UpgradeError> { Ok(self.clone()) }
 }
 
 unsafe impl<S: Strategy, R: RawDoubleBuffer + ?Sized> RawParts for Box<thin::ThinInner<Inner<R, S>>> {

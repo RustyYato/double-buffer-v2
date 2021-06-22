@@ -19,6 +19,7 @@ pub struct PoisonError(());
 
 pub trait WaitingStrategy {}
 impl WaitingStrategy for crate::strategy::saving::SavingStrategy {}
+impl WaitingStrategy for crate::strategy::local_saving::LocalSavingStrategy {}
 #[cfg(feature = "std")]
 impl WaitingStrategy for crate::strategy::saving_park::SavingParkStrategy {}
 
@@ -118,5 +119,5 @@ impl<O> Extend<O> for Operations<'_, O> {
 impl<O> core::ops::Deref for Operations<'_, O> {
     type Target = [O];
 
-    fn deref(&self) -> &Self::Target { &self.list }
+    fn deref(&self) -> &Self::Target { self.list }
 }

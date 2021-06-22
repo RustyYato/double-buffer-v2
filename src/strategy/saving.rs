@@ -1,4 +1,4 @@
-use crate::{thin::Thin, traits::Strategy};
+use crate::{athin::Athin, traits::Strategy};
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use parking_lot_core::SpinWait;
 
@@ -30,21 +30,21 @@ pub fn from_buffers<B>(front: B, back: B) -> (crate::base::Writer<Strong<B>>, cr
 
 #[derive(Default)]
 pub struct SavingStrategy {
-    tag_list: Mutex<Vec<Thin<AtomicUsize>>>,
+    tag_list: Mutex<Vec<Athin<AtomicUsize>>>,
 }
 
 pub struct RawGuard {
-    tag: Thin<AtomicUsize>,
+    tag: Athin<AtomicUsize>,
 }
 
 pub struct FastCapture(());
 
 pub struct Capture {
-    active: Vec<(usize, Thin<AtomicUsize>)>,
+    active: Vec<(usize, Athin<AtomicUsize>)>,
     backoff: SpinWait,
 }
 
-pub struct ReaderTag(Thin<AtomicUsize>);
+pub struct ReaderTag(Athin<AtomicUsize>);
 pub struct WriterTag(());
 
 unsafe impl Strategy for SavingStrategy {
@@ -59,7 +59,7 @@ unsafe impl Strategy for SavingStrategy {
 
     #[inline]
     unsafe fn reader_tag(&self) -> Self::ReaderTag {
-        let tag = Thin::new(AtomicUsize::new(0));
+        let tag = Athin::new(AtomicUsize::new(0));
         self.tag_list.lock().push(tag.clone());
         ReaderTag(tag)
     }
@@ -80,7 +80,7 @@ unsafe impl Strategy for SavingStrategy {
 
         // get rid of any dead readers and keep track of any active readers
         list.retain(|tag| {
-            let is_alive = Thin::strong_count(tag) != 0;
+            let is_alive = Athin::strong_count(tag) != 0;
 
             let value = tag.load(Ordering::Acquire);
 
