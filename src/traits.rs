@@ -3,6 +3,12 @@ use core::{cell::Cell, ops::Deref, sync::atomic::AtomicBool};
 use crate::base::Inner;
 use radium::Radium;
 
+pub type Buffer<I> = <<I as StrongBuffer>::Raw as RawDoubleBuffer>::Buffer;
+pub type Capture<I> = <<I as StrongBuffer>::Strategy as Strategy>::Capture;
+pub type CaptureError<I> = <<I as StrongBuffer>::Strategy as Strategy>::CaptureError;
+pub type WriterTag<I> = <<I as StrongBuffer>::Strategy as Strategy>::WriterTag;
+pub type ReaderTag<I> = <<I as StrongBuffer>::Strategy as Strategy>::ReaderTag;
+
 pub unsafe trait RawParts {
     type Strategy: Strategy;
     type Raw: RawDoubleBuffer + ?Sized;

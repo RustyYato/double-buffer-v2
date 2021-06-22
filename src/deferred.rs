@@ -1,18 +1,15 @@
 use crate::{
-    base::{Buffer, Capture, Reader, Swap, Writer},
-    traits::{Strategy, StrongBuffer},
+    base::{Swap, Writer},
+    traits::{Capture, StrongBuffer, WriterTag},
 };
 
-pub struct DeferredWriter<I, T = <<I as StrongBuffer>::Strategy as Strategy>::WriterTag, C = Capture<I>> {
+pub struct DeferredWriter<I, T = WriterTag<I>, C = Capture<I>> {
     // this will always be `Some` if nothing panics during swaps
     // the code in this crate won't panic, so only user code needs
     // to be checked
     swap: Option<Swap<C>>,
     writer: Writer<I, T>,
 }
-
-#[derive(Debug)]
-pub struct PoisonError(());
 
 pub trait WaitingStrategy {}
 impl WaitingStrategy for crate::strategy::saving::SavingStrategy {}
@@ -27,11 +24,11 @@ where
     fn from(writer: Writer<I>) -> Self { Self::new_unchecked(writer) }
 }
 
+impl<I, T, C> DeferredWriter<I, T, C> {
+    pub const fn new_unchecked(writer: Writer<I, T>) -> Self { Self { swap: None, writer } }
+}
+
 impl<I: StrongBuffer> DeferredWriter<I> {
-    pub fn reader(&self) -> Reader<I::Weak> { self.writer.reader() }
-
-    pub fn get(&self) -> &Buffer<I> { self.writer.get() }
-
     pub fn finish_swap(&mut self) -> &mut Writer<I> { self.finish_swap_with(|_| ()) }
 
     pub fn finish_swap_with<F: FnMut(&Writer<I>)>(&mut self, mut f: F) -> &mut Writer<I> {
@@ -50,10 +47,6 @@ impl<I: StrongBuffer> DeferredWriter<I> {
         self.finish_swap();
         self.writer
     }
-}
-
-impl<I, T, C> DeferredWriter<I, T, C> {
-    pub const fn new_unchecked(writer: Writer<I, T>) -> Self { Self { swap: None, writer } }
 }
 
 impl<I, T, C> core::ops::Deref for DeferredWriter<I, T, C> {

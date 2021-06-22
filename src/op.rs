@@ -1,20 +1,17 @@
 #![forbid(unsafe_code)]
 
 use crate::{
-    base::{Buffer, Capture, Reader, Writer},
+    base::Writer,
     deferred::{DeferredWriter, WaitingStrategy},
-    traits::{Operation, Strategy, StrongBuffer},
+    traits::{Buffer, Capture, Operation, StrongBuffer, WriterTag},
 };
 
 use crate::op_list::OpList;
 
-pub struct OpWriter<I, O, T = <<I as StrongBuffer>::Strategy as Strategy>::WriterTag, C = Capture<I>> {
+pub struct OpWriter<I, O, T = WriterTag<I>, C = Capture<I>> {
     writer: DeferredWriter<I, T, C>,
     ops: OpList<O>,
 }
-
-#[derive(Debug)]
-pub struct PoisonError(());
 
 impl<I: StrongBuffer, O> From<Writer<I>> for OpWriter<I, O>
 where
@@ -23,21 +20,33 @@ where
     fn from(writer: Writer<I>) -> Self { Self::new(writer.into()) }
 }
 
-impl<I: StrongBuffer, O> From<DeferredWriter<I>> for OpWriter<I, O>
-where
-    I::Strategy: WaitingStrategy,
-{
-    fn from(writer: DeferredWriter<I>) -> Self { Self::new(writer) }
+impl<I, O, T, C> From<DeferredWriter<I, T, C>> for OpWriter<I, O, T, C> {
+    fn from(writer: DeferredWriter<I, T, C>) -> Self { Self::new(writer) }
 }
 
 pub struct Operations<'a, O> {
     list: &'a mut OpList<O>,
 }
 
-impl<I: StrongBuffer, O> OpWriter<I, O> {
-    pub fn reader(&self) -> Reader<I::Weak> { self.writer.reader() }
+impl<I, O, T, C> OpWriter<I, O, T, C> {
+    pub const fn new(writer: DeferredWriter<I, T, C>) -> Self {
+        Self {
+            writer,
+            ops: OpList::new(),
+        }
+    }
 
-    pub fn get(&self) -> &Buffer<I> { self.writer.get() }
+    pub fn as_mut_parts(&mut self) -> (&Writer<I, T>, Operations<'_, O>) {
+        (&self.writer, Operations { list: &mut self.ops })
+    }
+
+    pub fn applied(&self) -> usize { self.ops.applied() }
+
+    pub fn reserve(&mut self, additional: usize) { self.ops.reserve(additional) }
+
+    pub fn push(&mut self, op: O) { self.ops.push(op) }
+
+    pub fn ops(&self) -> &[O] { &self.ops }
 }
 
 impl<I: StrongBuffer, O: Operation<Buffer<I>>> OpWriter<I, O> {
@@ -63,27 +72,6 @@ impl<I: StrongBuffer, O: Operation<Buffer<I>>> OpWriter<I, O> {
     pub fn start_swap(&mut self) { self.writer.start_swap() }
 
     pub fn into_raw_parts(self) -> (DeferredWriter<I>, OpList<O>) { (self.writer, self.ops) }
-}
-
-impl<I, O, T, C> OpWriter<I, O, T, C> {
-    pub const fn new(writer: DeferredWriter<I, T, C>) -> Self {
-        Self {
-            writer,
-            ops: OpList::new(),
-        }
-    }
-
-    pub fn as_mut_parts(&mut self) -> (&Writer<I, T>, Operations<'_, O>) {
-        (&self.writer, Operations { list: &mut self.ops })
-    }
-
-    pub fn applied(&self) -> usize { self.ops.applied() }
-
-    pub fn reserve(&mut self, additional: usize) { self.ops.reserve(additional) }
-
-    pub fn push(&mut self, op: O) { self.ops.push(op) }
-
-    pub fn ops(&self) -> &[O] { &self.ops }
 }
 
 impl<I, O, T, C> Extend<O> for OpWriter<I, O, T, C> {

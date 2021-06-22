@@ -8,7 +8,7 @@ use raw_buffers::RawBuffers;
 
 use radium::Radium;
 pub use reader::{Reader, ReaderGuard};
-pub use writer::{Buffer, Capture, CaptureError, Split, SplitMut, Swap, Writer};
+pub use writer::{Split, SplitMut, Swap, Writer};
 
 pub struct Inner<R: ?Sized, S, W = <S as Strategy>::Which> {
     which: W,

@@ -2,13 +2,9 @@ use radium::Radium;
 
 use core::sync::atomic::Ordering;
 
-use crate::traits::{RawDoubleBuffer, Strategy, StrongBuffer, TrustedRadium};
+use crate::traits::{Buffer, Capture, CaptureError, Strategy, StrongBuffer, TrustedRadium};
 
 use super::Reader;
-
-pub type Buffer<I> = <<I as StrongBuffer>::Raw as RawDoubleBuffer>::Buffer;
-pub type Capture<I> = <<I as StrongBuffer>::Strategy as Strategy>::Capture;
-pub type CaptureError<I> = <<I as StrongBuffer>::Strategy as Strategy>::CaptureError;
 
 pub struct Writer<I, T = <<I as StrongBuffer>::Strategy as Strategy>::WriterTag> {
     tag: T,
