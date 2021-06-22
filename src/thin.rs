@@ -21,6 +21,23 @@ impl<T> ThinInner<T> {
     }
 }
 
+impl Thin<Cell<usize>> {
+    pub(crate) fn dangling() -> Self {
+        #[cfg(feature = "std")]
+        {
+            std::thread_local! {
+                static DANGLING: Thin<Cell<usize>> = Thin::new(Cell::new(0));
+            }
+            DANGLING.with(Thin::clone)
+        }
+
+        #[cfg(not(feature = "std"))]
+        {
+            Self::new(Cell::new(0))
+        }
+    }
+}
+
 impl<T> Thin<T> {
     pub fn new(value: T) -> Self { Box::new(ThinInner::new(value)).into() }
 }

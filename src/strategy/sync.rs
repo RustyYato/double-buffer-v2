@@ -64,6 +64,8 @@ unsafe impl Strategy for SyncStrategy {
     type Capture = Capture;
     type CaptureError = core::convert::Infallible;
 
+    unsafe fn dangling_reader_tag() -> Self::ReaderTag { ReaderTag(()) }
+
     unsafe fn reader_tag(&self) -> Self::ReaderTag { ReaderTag(()) }
 
     unsafe fn writer_tag(&self) -> Self::WriterTag { WriterTag(()) }

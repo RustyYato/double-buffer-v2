@@ -8,6 +8,9 @@ pub type Capture<I> = <<I as StrongBuffer>::Strategy as Strategy>::Capture;
 pub type CaptureError<I> = <<I as StrongBuffer>::Strategy as Strategy>::CaptureError;
 pub type WriterTag<I> = <<I as StrongBuffer>::Strategy as Strategy>::WriterTag;
 pub type ReaderTag<I> = <<I as StrongBuffer>::Strategy as Strategy>::ReaderTag;
+pub type RawGuard<I> = <<I as StrongBuffer>::Strategy as Strategy>::RawGuard;
+pub type WriterTagW<I> = <<I as WeakBuffer>::Strategy as Strategy>::WriterTag;
+pub type ReaderTagW<I> = <<I as WeakBuffer>::Strategy as Strategy>::ReaderTag;
 
 pub unsafe trait RawParts {
     type Strategy: Strategy;
@@ -50,6 +53,8 @@ pub unsafe trait Strategy {
     type FastCapture;
     type CaptureError: core::fmt::Debug;
     type Capture;
+
+    unsafe fn dangling_reader_tag() -> Self::ReaderTag;
 
     unsafe fn reader_tag(&self) -> Self::ReaderTag;
 

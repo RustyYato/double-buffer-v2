@@ -49,6 +49,8 @@ unsafe impl Strategy for LocalSavingStrategy {
     type CaptureError = ();
     type Capture = Capture;
 
+    unsafe fn dangling_reader_tag() -> Self::ReaderTag { ReaderTag(Thin::dangling()) }
+
     #[inline]
     unsafe fn reader_tag(&self) -> Self::ReaderTag {
         let tag = Thin::new(Cell::new(0));

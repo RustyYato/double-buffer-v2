@@ -55,6 +55,8 @@ unsafe impl Strategy for SavingParkStrategy {
     type CaptureError = core::convert::Infallible;
     type Capture = Capture;
 
+    unsafe fn dangling_reader_tag() -> Self::ReaderTag { ReaderTag(super::SavingStrategy::dangling_reader_tag()) }
+
     #[inline]
     unsafe fn reader_tag(&self) -> Self::ReaderTag { ReaderTag(self.raw.reader_tag()) }
 

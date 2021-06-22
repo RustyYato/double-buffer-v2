@@ -2,7 +2,7 @@ use radium::Radium;
 
 use core::{marker::PhantomData, mem::ManuallyDrop, ops::Deref, sync::atomic::Ordering};
 
-use crate::traits::{RawDoubleBuffer, Strategy, StrongBuffer, WeakBuffer};
+use crate::traits::{Buffer, ReaderTagW, Strategy, StrongBuffer, WeakBuffer};
 
 impl<I> Default for Reader<I>
 where
@@ -19,19 +19,19 @@ where
     }
 }
 
-pub struct Reader<I, T = <<I as WeakBuffer>::Strategy as Strategy>::ReaderTag> {
+pub struct Reader<I, T = ReaderTagW<I>> {
     tag: T,
     inner: I,
 }
 
-pub struct ReaderGuard<'reader, I: StrongBuffer, T: ?Sized = <<I as StrongBuffer>::Raw as RawDoubleBuffer>::Buffer> {
+pub struct ReaderGuard<'reader, I: StrongBuffer, T: ?Sized = Buffer<I>> {
     value: &'reader T,
     raw: RawGuard<'reader, I>,
 }
 
-pub struct RawGuard<'reader, I: StrongBuffer> {
+struct RawGuard<'reader, I: StrongBuffer> {
     reader: PhantomData<&'reader ()>,
-    raw: ManuallyDrop<<<I as StrongBuffer>::Strategy as Strategy>::RawGuard>,
+    raw: ManuallyDrop<crate::traits::RawGuard<I>>,
     keep_alive: I,
 }
 
@@ -51,39 +51,8 @@ impl<I: WeakBuffer> Reader<I> {
         }
     }
 
-    pub fn try_clone(&self) -> Result<Self, I::UpgradeError> {
-        let inner = self.inner.upgrade()?;
-        let tag = unsafe { inner.strategy.reader_tag() };
-        Ok(Reader {
-            inner: self.inner.clone(),
-            tag,
-        })
-    }
-
     #[inline]
     pub fn is_dangling(&self) -> bool { self.inner.is_dangling() }
-
-    #[inline]
-    pub fn force_clone(&self) -> Self
-    where
-        <I::Strategy as Strategy>::ReaderTag: Clone,
-    {
-        Reader {
-            inner: self.inner.clone(),
-            tag: self.tag.clone(),
-        }
-    }
-
-    #[inline]
-    pub fn force_get(&self) -> ReaderGuard<'_, I::Strong>
-    where
-        I: WeakBuffer<UpgradeError = core::convert::Infallible>,
-        <I::Strategy as Strategy>::ReaderTag: Clone,
-    {
-        let keep_alive = self.inner.upgrade().unwrap_or_else(|inf| match inf {});
-        let mut tag = self.tag.clone();
-        unsafe { Self::get_with_tag(keep_alive, &mut tag) }
-    }
 
     #[inline]
     pub fn get(&mut self) -> ReaderGuard<'_, I::Strong> {
@@ -93,44 +62,38 @@ impl<I: WeakBuffer> Reader<I> {
     #[inline]
     pub fn try_get(&mut self) -> Result<ReaderGuard<'_, I::Strong>, I::UpgradeError> {
         let keep_alive = self.inner.upgrade()?;
-        Ok(unsafe { Self::get_with_tag(keep_alive, &mut self.tag) })
-    }
-
-    #[inline]
-    unsafe fn get_with_tag<'a>(
-        keep_alive: I::Strong,
-        tag: &mut <I::Strategy as Strategy>::ReaderTag,
-    ) -> ReaderGuard<'a, I::Strong> {
         let inner = &*keep_alive;
-        let guard = inner.strategy.begin_guard(tag);
+        let guard = inner.strategy.begin_guard(&mut self.tag);
 
         let which = inner.which.load(Ordering::Acquire);
-        let buffer = inner.raw.read(which);
+        let buffer = unsafe { inner.raw.read(which) };
 
-        ReaderGuard {
-            value: &*buffer,
+        Ok(ReaderGuard {
+            value: unsafe { &*buffer },
             raw: RawGuard {
                 reader: PhantomData,
                 raw: ManuallyDrop::new(guard),
                 keep_alive,
             },
-        }
+        })
     }
 }
 
-impl<I: WeakBuffer<UpgradeError = core::convert::Infallible>> Clone for Reader<I> {
+impl<I: WeakBuffer> Clone for Reader<I> {
     fn clone(&self) -> Self {
-        match self.try_clone() {
-            Ok(reader) => reader,
-            Err(infallible) => match infallible {},
+        let tag = match self.inner.upgrade() {
+            Ok(inner) => unsafe { inner.strategy.reader_tag() },
+            Err(_) => unsafe { <I::Strategy>::dangling_reader_tag() },
+        };
+
+        Reader {
+            inner: self.inner.clone(),
+            tag,
         }
     }
 }
 
-impl<I: Copy + WeakBuffer<UpgradeError = core::convert::Infallible>> Copy for Reader<I> where
-    <I::Strategy as Strategy>::ReaderTag: Copy
-{
-}
+impl<I: Copy + WeakBuffer> Copy for Reader<I> where ReaderTagW<I>: Copy {}
 
 impl<I: StrongBuffer, T: ?Sized> Deref for ReaderGuard<'_, I, T> {
     type Target = T;

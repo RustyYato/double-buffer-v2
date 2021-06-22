@@ -44,6 +44,8 @@ unsafe impl Strategy for LocalStrategy {
     type Capture = Capture;
     type CaptureError = CaptureError;
 
+    unsafe fn dangling_reader_tag() -> Self::ReaderTag { ReaderTag(()) }
+
     unsafe fn reader_tag(&self) -> Self::ReaderTag { ReaderTag(()) }
 
     unsafe fn writer_tag(&self) -> Self::WriterTag { WriterTag(()) }

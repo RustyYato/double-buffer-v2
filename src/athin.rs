@@ -1,4 +1,4 @@
-use std::boxed::Box;
+use std::{boxed::Box, cell::UnsafeCell};
 
 use core::{
     marker::PhantomData,
@@ -27,6 +27,22 @@ impl<T> AthinInner<T> {
             count: AtomicUsize::new(0),
             value,
         }
+    }
+}
+
+impl Athin<AtomicUsize> {
+    pub(crate) fn dangling() -> Self {
+        static mut VALUE: UnsafeCell<AthinInner<AtomicUsize>> = UnsafeCell::new(AthinInner {
+            count: AtomicUsize::new(1),
+            value: AtomicUsize::new(0),
+        });
+
+        static DANGLING: Athin<AtomicUsize> = Athin {
+            drop: PhantomData,
+            inner: unsafe { NonNull::new_unchecked(VALUE.get()) },
+        };
+
+        DANGLING.clone()
     }
 }
 

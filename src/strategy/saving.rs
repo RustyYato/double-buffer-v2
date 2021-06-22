@@ -57,6 +57,8 @@ unsafe impl Strategy for SavingStrategy {
     type CaptureError = core::convert::Infallible;
     type Capture = Capture;
 
+    unsafe fn dangling_reader_tag() -> Self::ReaderTag { ReaderTag(Athin::dangling()) }
+
     #[inline]
     unsafe fn reader_tag(&self) -> Self::ReaderTag {
         let tag = Athin::new(AtomicUsize::new(0));
