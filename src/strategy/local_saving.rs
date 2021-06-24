@@ -73,7 +73,6 @@ unsafe impl Strategy for LocalSavingStrategy {
 
         let mut active = Vec::with_capacity(list.len().min(8));
 
-        let mut index = 0;
         // get rid of any dead readers and keep track of any active readers
         list.retain(|tag| {
             let is_alive = Thin::strong_count(tag) != 0;
@@ -84,8 +83,6 @@ unsafe impl Strategy for LocalSavingStrategy {
             if is_alive && value & 1 == 1 {
                 active.push((value, tag.clone()))
             }
-
-            index += 1;
 
             is_alive
         });
