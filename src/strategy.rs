@@ -2,6 +2,8 @@ pub mod atomic;
 pub mod local;
 
 #[cfg(feature = "alloc")]
+pub mod hazard;
+#[cfg(feature = "alloc")]
 pub mod local_saving;
 
 #[cfg(feature = "alloc")]
