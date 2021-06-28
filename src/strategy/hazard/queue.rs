@@ -86,7 +86,7 @@ impl<T, const SHOULD_DROP: bool> Deref for QueueNode<T, SHOULD_DROP> {
 impl<T: Send + Sync, const SHOULD_DROP: bool> Queue<T, SHOULD_DROP> {
     #[cold]
     #[inline(never)]
-    fn alloc_slow(&self, value: T) -> QueueNode<T, SHOULD_DROP> {
+    fn alloc_slow(&self, default: T) -> QueueNode<T, SHOULD_DROP> {
         let ptr = unsafe { alloc(Layout::new::<QueueNodeInner<T>>()) };
         let ptr = ptr.cast::<QueueNodeInner<T>>();
 
@@ -100,7 +100,7 @@ impl<T: Send + Sync, const SHOULD_DROP: bool> Queue<T, SHOULD_DROP> {
             ptr.write(QueueNodeInner {
                 next: AtomicPtr::new(head),
                 has_both: AtomicBool::new(true),
-                value,
+                value: default,
             })
         }
 
@@ -124,7 +124,7 @@ impl<T: Send + Sync, const SHOULD_DROP: bool> Queue<T, SHOULD_DROP> {
         }
     }
 
-    pub fn alloc(&self, value: T) -> QueueNode<T, SHOULD_DROP> {
+    pub fn alloc(&self, default: T) -> QueueNode<T, SHOULD_DROP> {
         let mut head = self.head.load(Ordering::Acquire);
 
         unsafe {
@@ -134,7 +134,6 @@ impl<T: Send + Sync, const SHOULD_DROP: bool> Queue<T, SHOULD_DROP> {
                     .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
                     .is_ok()
                 {
-                    (*head).value = value;
                     return QueueNode {
                         ptr: NonNull::new_unchecked(head),
                         mark: PhantomData,
@@ -145,7 +144,7 @@ impl<T: Send + Sync, const SHOULD_DROP: bool> Queue<T, SHOULD_DROP> {
             }
         }
 
-        self.alloc_slow(value)
+        self.alloc_slow(default)
     }
 
     pub fn any<F: FnMut(&T) -> bool>(&self, mut finder: F) -> bool {

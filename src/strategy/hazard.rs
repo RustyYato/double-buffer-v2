@@ -17,7 +17,7 @@ pub struct HazardStrategy<W> {
 #[cfg(feature = "std")]
 pub struct HazardStrategy<W = Waiter> {
     count: AtomicU32,
-    queue: Queue<u32, true>,
+    queue: Queue<AtomicU32, true>,
     waiter: W,
 }
 
@@ -81,14 +81,14 @@ impl<W> HazardStrategy<W> {
 
 pub struct ReaderTag(());
 pub struct WriterTag(());
-pub struct RawGuard(QueueNode<u32, true>);
+pub struct RawGuard(QueueNode<AtomicU32, true>);
 
 pub struct FastCapture(());
 pub struct Capture(u32);
 #[derive(Debug)]
 pub struct CaptureError(());
 
-unsafe impl<W: Pause> Strategy for HazardStrategy<W> {
+unsafe impl Strategy for HazardStrategy {
     type Which = AtomicBool;
     type ReaderTag = ReaderTag;
     type WriterTag = WriterTag;
@@ -108,15 +108,27 @@ unsafe impl<W: Pause> Strategy for HazardStrategy<W> {
     }
 
     fn finish_capture_readers(&self, _: &mut Self::WriterTag, _: Self::FastCapture) -> Self::Capture {
-        let count = self.count.fetch_add(1, Ordering::Release);
-        Capture(count)
+        Capture(self.count.fetch_add(1, Ordering::Release))
     }
 
-    fn readers_have_exited(&self, &mut Capture(count): &mut Self::Capture) -> bool { !self.queue.any(|&c| c == count) }
+    fn readers_have_exited(&self, &mut Capture(count): &mut Self::Capture) -> bool {
+        !self.queue.any(|c| c.load(Ordering::Acquire) == count)
+    }
 
     fn begin_guard(&self, _: &mut Self::ReaderTag) -> Self::RawGuard {
-        let count = self.count.load(Ordering::Acquire);
-        let node = self.queue.alloc(count);
+        let node = self.queue.alloc(AtomicU32::new(0));
+        loop {
+            let count = self.count.load(Ordering::Acquire);
+            node.store(count, Ordering::Release);
+
+            // prevent reordering the store after the next load
+            core::sync::atomic::fence(Ordering::AcqRel);
+
+            let new_count = self.count.load(Ordering::Acquire);
+            if count == new_count {
+                break
+            }
+        }
         RawGuard(node)
     }
 
