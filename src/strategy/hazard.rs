@@ -30,10 +30,14 @@ pub struct Waiter {
 
 pub trait Pause {
     fn pause(&self);
+
+    fn notify(&self);
 }
 
 impl Pause for Spinner {
     fn pause(&self) {}
+
+    fn notify(&self) {}
 }
 
 #[cfg(feature = "std")]
@@ -42,6 +46,8 @@ impl Pause for Waiter {
         self.cv
             .wait_for(&mut self.mx.lock(), std::time::Duration::from_micros(100));
     }
+
+    fn notify(&self) { self.cv.notify_one(); }
 }
 
 #[cfg(feature = "std")]
@@ -88,7 +94,7 @@ unsafe impl<W: Pause> Strategy for HazardStrategy<W> {
     type WriterTag = WriterTag;
     type RawGuard = RawGuard;
     type FastCapture = FastCapture;
-    type CaptureError = core::convert::Infallible;
+    type CaptureError = std::convert::Infallible;
     type Capture = Capture;
 
     unsafe fn dangling_reader_tag() -> Self::ReaderTag { ReaderTag(()) }
@@ -114,7 +120,10 @@ unsafe impl<W: Pause> Strategy for HazardStrategy<W> {
         RawGuard(node)
     }
 
-    unsafe fn end_guard(&self, _: Self::RawGuard) {}
+    unsafe fn end_guard(&self, guard: Self::RawGuard) {
+        drop(guard);
+        self.waiter.notify();
+    }
 
     fn pause(&self, _: &mut Self::Capture) { self.waiter.pause() }
 }

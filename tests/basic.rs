@@ -69,8 +69,9 @@ fn infinite() {
 
 #[test]
 fn hazard() {
-    let mut inner = Inner::new(hazard::HazardStrategy::spinner(), (), ());
+    let mut inner = Inner::new(hazard::HazardStrategy::new(), (), ());
     let (mut w, mut r) = base::new(&mut inner);
     let _a = r.get();
+    drop(_a);
     w.swap_buffers();
 }
